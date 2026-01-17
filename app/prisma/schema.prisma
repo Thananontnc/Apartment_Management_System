@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Apartment {
+  id                 String   @id @default(uuid())
+  name               String
+  address            String?
+  defaultElecPrice   Float    @default(7.0)
+  defaultWaterPrice  Float    @default(18.0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  
+  rooms              Room[]
+}
+
+model Room {
+  id              String   @id @default(uuid())
+  roomNumber      String
+  floor           Int      @default(1)
+  baseRent        Float
+  status          String   @default("VACANT") // VACANT, OCCUPIED, MAINTENANCE
+  tenantName      String?
+  
+  apartmentId     String
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  
+  readings        UtilityReading[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model UtilityReading {
+  id              String   @id @default(uuid())
+  roomId          String
+  room            Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  recordDate      DateTime // Usually the 1st of the month for that billing cycle
+  
+  // Previous readings (snapshot for record keeping)
+  elecMeterPrev   Float
+  waterMeterPrev  Float
+  
+  // Current readings
+  elecMeter       Float
+  waterMeter      Float
+  
+  // Calculated Usage
+  elecUsage       Float
+  waterUsage      Float
+  
+  // Money
+  elecCost        Float
+  waterCost       Float
+  rentAmount      Float // Snapshot of rent at that time
+  totalAmount     Float // Rent + Utilities
+  
+  isPaid          Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+}
