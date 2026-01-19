@@ -26,7 +26,7 @@ export default async function InvoicesPage({ params, searchParams }: {
         .map(m => {
             const d = new Date(m.year, m.month - 1);
             return {
-                value: `${m.year}-${m.month}`,
+                value: `${m.year}-${m.month.toString().padStart(2, '0')}`,
                 label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
             };
         });

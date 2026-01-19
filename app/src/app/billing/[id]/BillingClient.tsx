@@ -109,7 +109,9 @@ export default function BillingClient({ apartment, sortedRooms, months, currentM
                                                         <input type="hidden" name="paymentMethod" value="CASH" />
                                                         <button type="submit" className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Cash</button>
                                                     </form>
-                                                    <form action={markAsPaid}>
+                                                    <form action={markAsPaid} onSubmit={(e) => {
+                                                        if (!confirm('Mark as Paid via QR Code?')) e.preventDefault();
+                                                    }}>
                                                         <input type="hidden" name="readingId" value={reading.id} />
                                                         <input type="hidden" name="apartmentId" value={apartment.id} />
                                                         <input type="hidden" name="paymentMethod" value="QR" />

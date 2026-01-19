@@ -273,7 +273,7 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                             </div>
                         </div>
                         <button type="submit" className="btn btn-secondary" style={{ padding: '14px 32px', minHeight: '48px', borderRadius: '16px', fontWeight: '700' }}>
-                            💾 Sync Draft
+                            💾 Save and Preview
                         </button>
                     </div>
 

@@ -31,7 +31,7 @@ export default function InvoicesClient({ apartment, sortedRooms, months, current
     return (
         <main className="container animate-fade-in" style={{ paddingBottom: '6rem' }}>
             <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '24px' }}>
-                <BackButton label="Back to Apartment" />
+                <BackButton label="Back to Apartment" href={`/apartments/${apartment.id}`} />
             </div>
 
             <header className="no-print" style={{ padding: '32px 0 60px 0', borderBottom: '1px solid var(--border-subtle)' }}>
