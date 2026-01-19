@@ -10,16 +10,79 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Owner {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  
+  apartments Apartment[]
+}
+
 model Apartment {
   id                 String   @id @default(uuid())
   name               String
   address            String?
   defaultElecPrice   Float    @default(7.0)
   defaultWaterPrice  Float    @default(18.0)
+  defaultRent        Float    @default(3000.0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   
+  ownerId            String?
+  owner              Owner?   @relation(fields: [ownerId], references: [id])
+  
   rooms              Room[]
+  mortgage           Mortgage?
+  expenses           Expense[]
+  maintenance        Maintenance[]
+}
+
+model Maintenance {
+  id          String    @id @default(uuid())
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  
+  roomId      String?
+  room        Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  
+  description String
+  cost        Float
+  category    String    // "REPAIR", "CLEANING", "UPGRADE", "OTHER"
+  status      String    @default("PENDING") // "PENDING", "IN_PROGRESS", "COMPLETED"
+  recordDate  DateTime
+  completedDate DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Mortgage {
+  id              String   @id @default(uuid())
+  apartmentId     String   @unique
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  
+  monthlyPayment  Float    // Fixed monthly payment to bank
+  loanAmount      Float?   // Total loan amount
+  interestRate    Float?   // Annual interest rate
+  startDate       DateTime @default(now())
+  
+  updatedAt       DateTime @updatedAt
+}
+
+model Expense {
+  id              String   @id @default(uuid())
+  apartmentId     String
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  
+  category        String   // MAINTENANCE, STAFF, TAX, OTHER
+  amount          Float
+  description     String?
+  recordMonth     DateTime // The month this expense belongs to
+  createdAt       DateTime @default(now())
+
+  @@unique([apartmentId, category, recordMonth], name: "apartmentId_category_recordMonth")
 }
 
 model Room {
@@ -34,8 +97,23 @@ model Room {
   apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
   
   readings        UtilityReading[]
+  maintenance     Maintenance[]
+  statusHistory   RoomStatusHistory[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model RoomStatusHistory {
+  id          String   @id @default(uuid())
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  oldStatus   String
+  newStatus   String
+  changeDate  DateTime @default(now())
+  notes       String?
+  
+  createdAt   DateTime @default(now())
 }
 
 model UtilityReading {
@@ -64,6 +142,10 @@ model UtilityReading {
   totalAmount     Float // Rent + Utilities
   
   isPaid          Boolean  @default(false)
+  paymentMethod   String?  // CASH, QR
+  paymentDate     DateTime?
   
   createdAt       DateTime @default(now())
+
+  @@unique([roomId, recordDate], name: "roomId_recordDate")
 }

@@ -10,10 +10,11 @@ export default async function ApartmentsPage() {
 
     return (
         <main className="container animate-fade-in" style={{ paddingBottom: '4rem' }}>
-            <header className="" style={{ padding: '40px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                <div style={{ marginBottom: '16px' }}>
-                    <BackButton label="Back to Dashboard" />
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '24px' }}>
+                <BackButton label="Back to Dashboard" href="/" />
+            </div>
+
+            <header style={{ padding: '32px 0 40px 0', borderBottom: '1px solid var(--border-subtle)' }}>
                 <div className="flex-between">
                     <div>
                         <h1 className="text-gradient">Properties</h1>
@@ -22,14 +23,15 @@ export default async function ApartmentsPage() {
                 </div>
             </header>
 
-            <div className="grid-dashboard" style={{ gridTemplateColumns: '2fr 1fr' }}>
-
+            <div className="grid-dashboard" style={{ gridTemplateColumns: '2fr 1fr', marginTop: '40px' }}>
                 {/* List Section */}
                 <section>
                     <div style={{ display: 'grid', gap: '20px' }}>
                         {apartments.length === 0 && (
-                            <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                No apartments found. Add your first property!
+                            <div className="card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', border: '2px dashed var(--border-subtle)' }}>
+                                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🏢</div>
+                                <h3 style={{ marginBottom: '8px' }}>No properties found</h3>
+                                <p>Start by adding your first apartment building on the right.</p>
                             </div>
                         )}
 
@@ -38,21 +40,15 @@ export default async function ApartmentsPage() {
                                 <div>
                                     <h3 style={{ marginBottom: '4px' }}>{apt.name}</h3>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{apt.address}</p>
-                                    <div style={{ display: 'flex', gap: '16px', marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                        <span>⚡ {apt.defaultElecPrice} THB/u</span>
-                                        <span>💧 {apt.defaultWaterPrice} THB/u</span>
-                                        <span>🏠 {apt._count.rooms} Rooms</span>
+                                    <div style={{ marginTop: '12px', fontSize: '0.85rem' }}>
+                                        <span className="badge green">{apt._count.rooms} Rooms</span>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                    <Link href={`/apartments/${apt.id}`} className="btn" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-subtle)', fontSize: '0.9rem' }}>
-                                        Manage Rooms
-                                    </Link>
-                                    <form action={async () => {
-                                        'use server';
-                                        await deleteApartment(apt.id);
-                                    }}>
-                                        <button className="btn" style={{ color: '#ef4444', padding: '8px 12px' }}>✕</button>
+                                    <Link href={`/apartments/${apt.id}/invoices`} className="btn btn-secondary">📜 History</Link>
+                                    <Link href={`/apartments/${apt.id}`} className="btn btn-secondary">Edit Info</Link>
+                                    <form action={deleteApartment.bind(null, apt.id)}>
+                                        <button type="submit" className="btn" style={{ color: 'var(--danger)', border: '1px solid var(--danger-bg)' }}>Delete</button>
                                     </form>
                                 </div>
                             </div>
@@ -60,38 +56,45 @@ export default async function ApartmentsPage() {
                     </div>
                 </section>
 
-                {/* Add New Form */}
-                <aside>
-                    <div className="glass-card" style={{ position: 'sticky', top: '24px' }}>
-                        <h3 style={{ marginBottom: '20px' }}>Add Property</h3>
-                        <form action={createApartment}>
-                            <div style={{ marginBottom: '16px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Property Name</label>
-                                <input name="name" required placeholder="e.g. Sunrise View" />
+                {/* Create Section */}
+                <section>
+                    <div className="card glass-card">
+                        <h3 style={{ marginBottom: '24px' }}>Add New Building</h3>
+                        <form action={createApartment} style={{ display: 'grid', gap: '20px' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Apartment Name</label>
+                                <input name="name" type="text" placeholder="Green View Apartment" required />
                             </div>
-                            <div style={{ marginBottom: '16px' }}>
+                            <div>
                                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Address</label>
-                                <input name="address" required placeholder="e.g. 123 Main St" />
+                                <textarea name="address" rows={3} placeholder="123 Sukhumvit Road..." />
                             </div>
-                            <div style={{ marginBottom: '16px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Number of Rooms (Optional)</label>
-                                <input name="roomCount" type="number" placeholder="e.g. 10 (Auto-creates 1, 2...)" />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Elec (THB)</label>
-                                    <input name="elecPrice" type="number" step="0.1" defaultValue="7" />
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Elec Rate (฿)</label>
+                                    <input name="elecRate" type="number" step="0.1" defaultValue="7.0" />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Water (THB)</label>
-                                    <input name="waterPrice" type="number" step="0.1" defaultValue="18" />
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Water Rate (฿)</label>
+                                    <input name="waterRate" type="number" step="0.1" defaultValue="18.0" />
                                 </div>
                             </div>
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Create Property</button>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Base Rent (฿)</label>
+                                    <input name="defaultRent" type="number" step="100" defaultValue="3500" />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Room Count</label>
+                                    <input name="roomCount" type="number" placeholder="e.g. 10" />
+                                </div>
+                            </div>
+                            <button type="submit" className="btn btn-primary" style={{ marginTop: '12px' }}>
+                                Create Property
+                            </button>
                         </form>
                     </div>
-                </aside>
-
+                </section>
             </div>
         </main>
     );

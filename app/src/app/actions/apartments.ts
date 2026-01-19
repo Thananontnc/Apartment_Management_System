@@ -6,8 +6,9 @@ import { revalidatePath } from 'next/cache';
 export async function createApartment(formData: FormData) {
     const name = formData.get('name') as string;
     const address = formData.get('address') as string;
-    const elecPrice = parseFloat(formData.get('elecPrice') as string) || 7;
-    const waterPrice = parseFloat(formData.get('waterPrice') as string) || 18;
+    const elecPrice = parseFloat(formData.get('elecRate') as string) || 7;
+    const waterPrice = parseFloat(formData.get('waterRate') as string) || 18;
+    const defaultRent = parseFloat(formData.get('defaultRent') as string) || 3000;
 
     const roomCount = parseInt(formData.get('roomCount') as string) || 0;
 
@@ -17,6 +18,7 @@ export async function createApartment(formData: FormData) {
             address,
             defaultElecPrice: elecPrice,
             defaultWaterPrice: waterPrice,
+            defaultRent: defaultRent
         },
     });
 
@@ -36,7 +38,7 @@ export async function createApartment(formData: FormData) {
             roomsData.push({
                 roomNumber: `${i}`,
                 floor: 1,
-                baseRent: 3000, // Default start
+                baseRent: defaultRent,
                 apartmentId: newApartment.id,
                 status: 'VACANT'
             });

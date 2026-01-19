@@ -4,25 +4,33 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
 export async function submitReadings(apartmentId: string, formData: FormData) {
-    // We need to parse dynamic keys: elec_{roomId}, water_{roomId}
-    // Iterate over rooms in the apartment directly from DB to know what to look for, or just iterate formData keys.
-    // Safer to iterate keys.
-
     const entries = Array.from(formData.entries());
+    const billingMonthStr = formData.get('recordDate') as string; // format: "YYYY-MM" (changed from billingMonth to recordDate to match form)
+    const recordDate = billingMonthStr ? new Date(billingMonthStr + "-01") : new Date();
 
     // Group by room
-    const readingsByRoom: Record<string, { elec?: number, water?: number }> = {};
+    const readingsByRoom: Record<string, { prevElec?: number, elec?: number, prevWater?: number, water?: number }> = {};
 
     for (const [key, value] of entries) {
-        if (key.startsWith('elec_')) {
+        const val = parseFloat(value as string);
+        if (isNaN(val)) continue;
+
+        if (key.startsWith('prevElec_')) {
+            const roomId = key.replace('prevElec_', '');
+            if (!readingsByRoom[roomId]) readingsByRoom[roomId] = {};
+            readingsByRoom[roomId].prevElec = val;
+        } else if (key.startsWith('elec_')) {
             const roomId = key.replace('elec_', '');
             if (!readingsByRoom[roomId]) readingsByRoom[roomId] = {};
-            readingsByRoom[roomId].elec = parseFloat(value as string);
-        }
-        if (key.startsWith('water_')) {
+            readingsByRoom[roomId].elec = val;
+        } else if (key.startsWith('prevWater_')) {
+            const roomId = key.replace('prevWater_', '');
+            if (!readingsByRoom[roomId]) readingsByRoom[roomId] = {};
+            readingsByRoom[roomId].prevWater = val;
+        } else if (key.startsWith('water_')) {
             const roomId = key.replace('water_', '');
             if (!readingsByRoom[roomId]) readingsByRoom[roomId] = {};
-            readingsByRoom[roomId].water = parseFloat(value as string);
+            readingsByRoom[roomId].water = val;
         }
     }
 
@@ -33,45 +41,73 @@ export async function submitReadings(apartmentId: string, formData: FormData) {
     // Process each room
     for (const roomId in readingsByRoom) {
         const input = readingsByRoom[roomId];
-        if (input.elec === undefined || input.water === undefined) continue; // Skip incomplete
 
-        // Get Previous Reading
-        const lastReading = await prisma.utilityReading.findFirst({
-            where: { roomId },
-            orderBy: { recordDate: 'desc' }
-        });
+        if (
+            input.elec === undefined ||
+            input.water === undefined ||
+            input.prevElec === undefined ||
+            input.prevWater === undefined
+        ) {
+            continue;
+        }
 
-        const prevElec = lastReading?.elecMeter ?? 0; // Default to 0 or some logic
-        const prevWater = lastReading?.waterMeter ?? 0;
+        const elecUsage: number = Math.max(0, input.elec - input.prevElec);
+        const waterUsage: number = Math.max(0, input.water - input.prevWater);
 
-        const elecUsage = input.elec - prevElec;
-        const waterUsage = input.water - prevWater;
+        const elecCost: number = elecUsage * apartment.defaultElecPrice;
+        const waterCost: number = waterUsage * apartment.defaultWaterPrice;
 
-        // Simple validation (usage shouldn't be negative usually, unless meter loop, allowing for now)
-        const elecCost = elecUsage * apartment.defaultElecPrice;
-        const waterCost = waterUsage * apartment.defaultWaterPrice;
-
-        // Get Room Rent
         const room = await prisma.room.findUnique({ where: { id: roomId } });
-        const rent = room?.baseRent || 0;
+        const rent: number = room?.baseRent || 0;
 
-        await prisma.utilityReading.create({
-            data: {
-                roomId,
-                recordDate: new Date(),
-                elecMeterPrev: prevElec,
-                elecMeterCurrent: input.elec,
-                waterMeterPrev: prevWater,
-                waterMeterCurrent: input.water,
-                elecUsage,
-                waterUsage,
-                elecCost,
-                waterCost,
-                rentAmount: rent,
-                totalAmount: rent + elecCost + waterCost
+        const existingReading = await prisma.utilityReading.findFirst({
+            where: {
+                roomId: roomId,
+                recordDate: recordDate
             }
         });
+
+        if (existingReading) {
+            await prisma.utilityReading.update({
+                where: { id: existingReading.id },
+                data: {
+                    elecMeterPrev: input.prevElec,
+                    elecMeter: input.elec,
+                    waterMeterPrev: input.prevWater,
+                    waterMeter: input.water,
+                    elecUsage,
+                    waterUsage,
+                    elecCost,
+                    waterCost,
+                    rentAmount: rent,
+                    totalAmount: rent + elecCost + waterCost
+                }
+            });
+        } else {
+            await prisma.utilityReading.create({
+                data: {
+                    room: { connect: { id: roomId } },
+                    recordDate: recordDate,
+                    elecMeterPrev: input.prevElec,
+                    elecMeter: input.elec,
+                    waterMeterPrev: input.prevWater,
+                    waterMeter: input.water,
+                    elecUsage,
+                    waterUsage,
+                    elecCost,
+                    waterCost,
+                    rentAmount: rent,
+                    totalAmount: rent + elecCost + waterCost
+                }
+            });
+        }
     }
 
     revalidatePath(`/utilities/${apartmentId}`);
+    revalidatePath(`/billing/${apartmentId}`);
+    revalidatePath(`/apartments/${apartmentId}/invoices`);
+
+    const monthQuery = billingMonthStr ? `?month=${billingMonthStr}` : '';
+    const { redirect } = await import('next/navigation');
+    redirect(`/apartments/${apartmentId}/invoices${monthQuery}`);
 }

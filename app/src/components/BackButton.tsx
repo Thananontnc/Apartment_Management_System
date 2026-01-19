@@ -1,9 +1,45 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useI18n } from "@/providers/I18nProvider";
 
-export default function BackButton({ label = "Back" }: { label?: string }) {
+export default function BackButton({ label = "Back", href }: { label?: string, href?: string }) {
     const router = useRouter();
+    const { t } = useI18n();
+
+    // Map common labels to translation keys
+    const labelKeyMap: Record<string, string> = {
+        "Back to Dashboard": "back_to_dashboard",
+        "Back to Properties": "back_to_properties",
+        "Back to Selection": "back_to_selection",
+        "Back": "back"
+    };
+
+    const displayLabel = labelKeyMap[label] ? t(labelKeyMap[label]) : label;
+
+    if (href) {
+        return (
+            <Link
+                href={href}
+                className="btn"
+                style={{
+                    background: "transparent",
+                    color: "var(--text-muted)",
+                    padding: "8px 0",
+                    fontSize: "0.9rem",
+                    border: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    cursor: "pointer",
+                    textDecoration: "none"
+                }}
+            >
+                <span>←</span> {displayLabel}
+            </Link>
+        );
+    }
 
     return (
         <button
@@ -21,7 +57,7 @@ export default function BackButton({ label = "Back" }: { label?: string }) {
                 cursor: "pointer",
             }}
         >
-            <span>←</span> {label}
+            <span>←</span> {displayLabel}
         </button>
     );
 }
