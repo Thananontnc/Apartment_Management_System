@@ -88,7 +88,6 @@ export default async function Dashboard() {
         outstandingDebt
       }}
       apartments={apartments}
-      currentMonthName={currentMonthName}
     />
   );
 }

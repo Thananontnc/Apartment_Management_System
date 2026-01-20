@@ -1,17 +1,22 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import BackButton from '@/components/BackButton';
+import { createPortal } from 'react-dom';
+import BackButton from '@/components/ui/BackButton';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { submitReadings } from '@/app/actions/utilities';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useI18n } from '@/providers/I18nProvider';
 
-interface UtilitiesClientProps {
+interface MeterHubProps {
     apartment: any;
     sortedRooms: any[];
 }
 
-export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesClientProps) {
+export default function MeterHub({ apartment, sortedRooms }: MeterHubProps) {
+    const { t } = useI18n();
     const router = useRouter();
     const searchParams = useSearchParams();
     const currentMonth = searchParams.get('month') || new Date().toISOString().slice(0, 7);
@@ -19,6 +24,12 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     const [showMonthGrid, setShowMonthGrid] = useState(false);
     const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentYear = parseInt(currentMonth.split('-')[0]);
@@ -54,7 +65,6 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // Merge drafts on top of initial data
                 setDrafts({ ...initialMap, ...parsed });
             } catch (e) {
                 setDrafts(initialMap);
@@ -69,12 +79,12 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
         router.push(`?month=${val}`);
     };
 
-    // Debounced LocalStorage Saving (Performance Optimization)
+    // Debounced LocalStorage Saving
     useEffect(() => {
         const timer = setTimeout(() => {
             const key = `utility_draft_${apartment.id}_${currentMonth}`;
             localStorage.setItem(key, JSON.stringify(drafts));
-        }, 800); // Wait 800ms after last activity before writing to disk
+        }, 800);
 
         return () => clearTimeout(timer);
     }, [drafts, apartment.id, currentMonth]);
@@ -172,34 +182,35 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                     }
                 }
             `}</style>
+
             {/* Month Picker Overlay */}
-            {showMonthGrid && (
+            {showMonthGrid && mounted && createPortal(
                 <div
                     style={{
                         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        zIndex: 1000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(16px)',
+                        zIndex: 99999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(16px)',
                         display: 'flex', justifyContent: 'center', alignItems: 'center',
-                        padding: '20px',
-                        animation: 'fadeInUp 0.4s ease-out forwards'
+                        padding: '20px'
                     }}
                     onClick={() => setShowMonthGrid(false)}
                 >
                     <div
-                        className="glass-card"
+                        className="glass-card animate-bounce-in"
                         style={{
                             padding: '40px',
                             width: '420px',
                             maxWidth: '95vw',
                             borderRadius: '32px',
+                            background: 'var(--bg-app)',
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                            border: '1px solid var(--glass-border)'
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexDirection: 'row' }}>
-                            <button type="button" onClick={() => navigateToMonth(currentYear - 1, currentMonthIdx)} className="btn btn-secondary icon-btn" style={{ minWidth: '48px', minHeight: '48px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)' }}>←</button>
-                            <h3 style={{ fontSize: '1.75rem', fontWeight: '950', letterSpacing: '-0.02em', margin: '0 16px', background: 'linear-gradient(135deg, #fff 0%, #aaa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{currentYear} Cycle</h3>
-                            <button type="button" onClick={() => navigateToMonth(currentYear + 1, currentMonthIdx)} className="btn btn-secondary icon-btn" style={{ minWidth: '48px', minHeight: '48px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)' }}>→</button>
+                        <div className="flex-between" style={{ marginBottom: '32px', flexDirection: 'row' }}>
+                            <Button variant="secondary" onClick={() => navigateToMonth(currentYear - 1, currentMonthIdx)} style={{ minWidth: '48px', minHeight: '48px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)' }}>←</Button>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: '950', letterSpacing: '-0.02em', margin: '0 16px', background: 'linear-gradient(135deg, #fff 0%, #aaa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{currentYear} {t('cycle')}</h3>
+                            <Button variant="secondary" onClick={() => navigateToMonth(currentYear + 1, currentMonthIdx)} style={{ minWidth: '48px', minHeight: '48px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)' }}>→</Button>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
                             {months.map((m, idx) => (
@@ -211,11 +222,12 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                     style={{
                                         padding: '16px 0',
                                         borderRadius: '16px',
-                                        fontSize: '0.95rem',
+                                        fontSize: '1rem',
                                         fontWeight: '800',
                                         background: idx === currentMonthIdx ? '' : 'rgba(255,255,255,0.03)',
                                         border: idx === currentMonthIdx ? '' : '1px solid var(--border-subtle)',
-                                        transition: 'all 0.2s ease'
+                                        transition: 'all 0.2s ease',
+                                        color: idx === currentMonthIdx ? 'white' : 'var(--text-main)'
                                     }}
                                 >
                                     {m}
@@ -223,33 +235,33 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                             ))}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             <main className="container animate-fade-in" style={{ paddingBottom: '8rem' }}>
 
-
                 <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '24px' }}>
-                    <BackButton label="Asset Selection" href="/utilities" />
+                    <BackButton label={t('back_to_selection')} href="/utilities" />
                 </div>
 
                 <header style={{ padding: '40px 0 60px 0' }}>
                     <div className="flex-between flex-wrap gap-32">
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <h1 className="text-gradient">Meter Hub: {apartment.name}</h1>
-                                {sortedRooms.some(r => r.currentReading) && <span className="badge blue" style={{ borderRadius: '12px', padding: '8px 16px', fontWeight: '800' }}>✏️ Revision Mode</span>}
+                                <h1 className="text-gradient">{t('meter_hub')}: {apartment.name}</h1>
+                                {sortedRooms.some(r => r.currentReading) && <Badge variant="blue" style={{ borderRadius: '12px', padding: '8px 16px', fontWeight: '800' }}>✏️ {t('revision_mode')}</Badge>}
                             </div>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem', marginTop: '12px', fontWeight: '500' }}>Precision utility monitoring & monthly statement generation.</p>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem', marginTop: '12px', fontWeight: '500' }}>{t('precision_monitoring')}</p>
                         </div>
                         <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
                             <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: '800' }}>Operational Audit</div>
-                                <div style={{ fontSize: '2.5rem', fontWeight: '950', color: 'var(--primary)', letterSpacing: '-1px' }}>{progressPercent}% <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Complete</span></div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: '800' }}>{t('operational_audit')}</div>
+                                <div style={{ fontSize: '2.5rem', fontWeight: '950', color: 'var(--primary)', letterSpacing: '-1px' }}>{progressPercent}% <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>{t('complete')}</span></div>
                             </div>
                             <div className="no-print" style={{ display: 'flex', background: 'var(--bg-panel)', padding: '6px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-                                <button type="button" onClick={() => setViewMode('card')} className={`btn ${viewMode === 'card' ? 'btn-primary' : ''}`} style={{ padding: '10px 24px', fontSize: '0.85rem', borderRadius: '12px', minWidth: '100px' }}>Cards</button>
-                                <button type="button" onClick={() => setViewMode('table')} className={`btn ${viewMode === 'table' ? 'btn-primary' : ''}`} style={{ padding: '10px 24px', fontSize: '0.85rem', borderRadius: '12px', minWidth: '100px' }}>Table</button>
+                                <Button variant={viewMode === 'card' ? 'primary' : 'secondary'} onClick={() => setViewMode('card')} style={{ padding: '10px 24px', fontSize: '0.85rem', borderRadius: '12px', minWidth: '100px' }}>{t('cards')}</Button>
+                                <Button variant={viewMode === 'table' ? 'primary' : 'secondary'} onClick={() => setViewMode('table')} style={{ padding: '10px 24px', fontSize: '0.85rem', borderRadius: '12px', minWidth: '100px' }}>{t('table')}</Button>
                             </div>
                         </div>
                     </div>
@@ -265,7 +277,7 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                     style={{ marginTop: '20px' }}
                 >
                     {/* Building Insight Summary */}
-                    <div className="glass-card" style={{
+                    <Card variant="glass" style={{
                         marginBottom: '48px',
                         padding: '40px',
                         background: 'linear-gradient(135deg, var(--bg-panel), rgba(var(--primary-rgb), 0.05))',
@@ -277,33 +289,33 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                     }}>
                         {/* Memoized Financial Data View */}
                         <div>
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '2px' }}>Institutional Revenue Flow</label>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '2px' }}>{t('institutional_revenue')}</label>
                             <div style={{ fontSize: '3.5rem', fontWeight: '950', color: 'var(--text-dark)', marginTop: '12px', letterSpacing: '-2px' }}>
                                 ฿<span className="text-gradient">{totalRevenue.toLocaleString()}</span>
                             </div>
-                            <p style={{ color: 'var(--success)', fontSize: '0.9rem', fontWeight: '700', marginTop: '8px' }}>Estimated Target for {months[currentMonthIdx]} Cycle</p>
+                            <p style={{ color: 'var(--success)', fontSize: '0.9rem', fontWeight: '700', marginTop: '8px' }}>{t('estimated_target')} {months[currentMonthIdx]} {t('cycle')}</p>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                            <div className="glass-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
+                            <Card variant="glass" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
                                 <div style={{ fontSize: '1.5rem', marginBottom: '12px' }}>🏦</div>
-                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>UNIT RENT</label>
+                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>{t('unit_rent')}</label>
                                 <div style={{ fontWeight: '900', fontSize: '1.4rem', marginTop: '4px' }}>฿{buildingRent.toLocaleString()}</div>
-                            </div>
-                            <div className="glass-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
+                            </Card>
+                            <Card variant="glass" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
                                 <div style={{ fontSize: '1.5rem', marginBottom: '12px' }}>⚡</div>
-                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>ENERGY</label>
+                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>{t('energy')}</label>
                                 <div style={{ fontWeight: '900', fontSize: '1.4rem', marginTop: '4px', color: 'var(--warning)' }}>฿{buildingElec.toLocaleString()}</div>
-                            </div>
-                            <div className="glass-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
+                            </Card>
+                            <Card variant="glass" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
                                 <div style={{ fontSize: '1.5rem', marginBottom: '12px' }}>💧</div>
-                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>WATER</label>
+                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>{t('water')}</label>
                                 <div style={{ fontWeight: '900', fontSize: '1.4rem', marginTop: '4px', color: 'var(--blue)' }}>฿{buildingWater.toLocaleString()}</div>
-                            </div>
+                            </Card>
                         </div>
-                    </div>
+                    </Card>
 
                     {/* Cycle Control Strip */}
-                    <div className="glass-card no-print" style={{
+                    <Card variant="glass" className="no-print" style={{
                         marginBottom: '48px',
                         padding: '24px 40px',
                         display: 'flex',
@@ -323,19 +335,18 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                         <div style={{ display: 'flex', gap: '48px', alignItems: 'center', flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                                 <label style={{ fontWeight: '950', color: 'var(--text-dark)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                                    Cycle
+                                    {t('cycle')}
                                 </label>
                                 <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-app)', borderRadius: '16px', padding: '6px', border: '1px solid var(--border-subtle)' }}>
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="secondary"
                                         onClick={() => {
                                             const d = new Date(currentMonth + '-01');
                                             d.setMonth(d.getMonth() - 1);
                                             router.push(`?month=${d.toISOString().slice(0, 7)}`);
                                         }}
-                                        className="btn btn-secondary icon-btn"
                                         style={{ padding: '8px 12px', borderRadius: '12px', minWidth: '44px', border: 'none' }}
-                                    >←</button>
+                                    >←</Button>
 
                                     <button
                                         type="button"
@@ -356,27 +367,26 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                     </button>
                                     <input type="hidden" name="recordDate" value={currentMonth} />
 
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="secondary"
                                         onClick={() => {
                                             const d = new Date(currentMonth + '-01');
                                             d.setMonth(d.getMonth() + 1);
                                             router.push(`?month=${d.toISOString().slice(0, 7)}`);
                                         }}
-                                        className="btn btn-secondary icon-btn"
                                         style={{ padding: '8px 12px', borderRadius: '12px', minWidth: '44px', border: 'none' }}
-                                    >→</button>
+                                    >→</Button>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '16px' }}>
-                                <div className="badge blue" style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '12px' }}>⚡ ฿{apartment.defaultElecPrice}</div>
-                                <div className="badge blue" style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '12px' }}>💧 ฿{apartment.defaultWaterPrice}</div>
+                                <Badge variant="blue" style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '12px' }}>⚡ ฿{apartment.defaultElecPrice}</Badge>
+                                <Badge variant="blue" style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '12px' }}>💧 ฿{apartment.defaultWaterPrice}</Badge>
                             </div>
                         </div>
-                        <button type="submit" className="btn btn-primary hover-effect" style={{ padding: '16px 48px', height: '60px', borderRadius: '16px', fontWeight: '950', fontSize: '1rem', boxShadow: 'var(--shadow-glow)' }}>
-                            🚀 Finalize Batch Records
-                        </button>
-                    </div>
+                        <Button type="submit" variant="primary" className="hover-effect" style={{ padding: '16px 48px', height: '60px', borderRadius: '16px', fontWeight: '950', fontSize: '1rem', boxShadow: 'var(--shadow-glow)' }}>
+                            🚀 {t('finalize_batch')}
+                        </Button>
+                    </Card>
 
                     {viewMode === 'card' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '32px' }}>
@@ -392,7 +402,7 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                 const hasData = drafts[`elec_${room.id}`] || drafts[`water_${room.id}`];
 
                                 return (
-                                    <div key={room.id} className="glass-card hover-effect" style={{
+                                    <Card key={room.id} variant="glass" hoverEffect className="hover-effect" style={{
                                         padding: '0',
                                         overflow: 'hidden',
                                         border: hasData ? '2px solid var(--primary-glow)' : '1px solid var(--glass-border)',
@@ -412,7 +422,7 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                                 border: '1px solid var(--border-subtle)'
                                             }}>
                                                 <div className="room-number-display" style={{ fontSize: '3rem', fontWeight: '950', letterSpacing: '-2px', lineHeight: '1' }}>{room.roomNumber}</div>
-                                                <span className={`badge ${room.status === 'OCCUPIED' ? 'green' : 'red'}`} style={{ marginTop: '16px', borderRadius: '12px', fontSize: '0.7rem', width: 'fit-content', whiteSpace: 'nowrap' }}>{room.status}</span>
+                                                <Badge variant={room.status === 'OCCUPIED' ? 'green' : 'red'} style={{ marginTop: '16px', borderRadius: '12px', fontSize: '0.7rem', width: 'fit-content', whiteSpace: 'nowrap' }}>{room.status}</Badge>
                                                 <input type="hidden" name="roomIds[]" value={room.id} />
                                             </div>
 
@@ -421,7 +431,7 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                                 <div style={{ background: 'rgba(251, 191, 36, 0.06)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
                                                     <div className="flex-between" style={{ marginBottom: '12px' }}>
                                                         <label style={{ fontSize: '0.75rem', fontWeight: '950', color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '1px' }}>⚡ Energy (kWh)</label>
-                                                        {elecDiff > 0 && <span className="badge yellow" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>+{elecDiff.toFixed(1)}</span>}
+                                                        {elecDiff > 0 && <Badge variant="yellow" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>+{elecDiff.toFixed(1)}</Badge>}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
                                                         <div style={{ flex: 1.5 }}>
@@ -456,7 +466,7 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                                 <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
                                                     <div className="flex-between" style={{ marginBottom: '12px' }}>
                                                         <label style={{ fontSize: '0.75rem', fontWeight: '950', color: 'var(--blue)', textTransform: 'uppercase', letterSpacing: '1px' }}>💧 Water (Units)</label>
-                                                        {waterUsage > 0 && <span className="badge blue" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>+{waterUsage.toFixed(0)}</span>}
+                                                        {waterUsage > 0 && <Badge variant="blue" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>+{waterUsage.toFixed(0)}</Badge>}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
                                                         <div style={{ flex: 1.5 }}>
@@ -488,12 +498,12 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </Card>
                                 );
                             })}
                         </div>
                     ) : (
-                        <div className="glass-card animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
+                        <Card variant="glass" className="animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
                             <div style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                     <thead>
@@ -542,13 +552,13 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                        </Card>
                     )}
 
                     <div style={{ marginTop: '100px', display: 'flex', justifyContent: 'center', paddingBottom: '120px' }}>
-                        <button type="submit" className="btn btn-primary hover-effect" style={{ padding: '24px 120px', minHeight: '100px', fontSize: '1.75rem', borderRadius: '40px', boxShadow: '0 40px 80px -15px rgba(var(--primary-rgb), 0.6)', fontWeight: '950' }}>
-                            ⚡ Authorize & Generate Ledger
-                        </button>
+                        <Button type="submit" variant="primary" className="hover-effect" style={{ padding: '24px 120px', minHeight: '100px', fontSize: '1.75rem', borderRadius: '40px', boxShadow: '0 40px 80px -15px rgba(var(--primary-rgb), 0.6)', fontWeight: '950' }}>
+                            ⚡ {t('authorize_generate')}
+                        </Button>
                     </div>
                 </form>
             </main>

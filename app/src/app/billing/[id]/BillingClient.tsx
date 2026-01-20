@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import BackButton from '@/components/BackButton';
-import { markAsPaid } from '@/app/actions/billing';
+import BackButton from '@/components/ui/BackButton';
+import PaymentAction from '@/features/billing/components/PaymentAction';
 import { useRouter } from 'next/navigation';
 
 interface BillingProps {
@@ -109,34 +109,11 @@ export default function BillingClient({ apartment, sortedRooms, months, currentM
                                                 </span>
                                             </td>
                                             <td style={{ padding: '24px 32px', textAlign: 'center' }}>
-                                                {!reading.isPaid && (
-                                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                                                        <form action={markAsPaid}>
-                                                            <input type="hidden" name="readingId" value={reading.id} />
-                                                            <input type="hidden" name="apartmentId" value={apartment.id} />
-                                                            <input type="hidden" name="paymentMethod" value="CASH" />
-                                                            <button type="submit" className="btn btn-secondary hover-effect" style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}>
-                                                                💵 Cash
-                                                            </button>
-                                                        </form>
-                                                        <form action={markAsPaid} onSubmit={(e) => {
-                                                            if (!confirm('Mark as Paid via Digital Transfer?')) e.preventDefault();
-                                                        }}>
-                                                            <input type="hidden" name="readingId" value={reading.id} />
-                                                            <input type="hidden" name="apartmentId" value={apartment.id} />
-                                                            <input type="hidden" name="paymentMethod" value="QR" />
-                                                            <button type="submit" className="btn btn-primary hover-effect" style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '12px' }}>
-                                                                📱 QR Pay
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                )}
-                                                {reading.isPaid && (
-                                                    <div style={{ background: 'rgba(var(--primary-rgb), 0.05)', padding: '16px', borderRadius: '16px', display: 'inline-block', minWidth: '140px' }}>
-                                                        <div style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '900' }}>{reading.paymentMethod}</div>
-                                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '600' }}>{new Date(reading.paymentDate!).toLocaleDateString('en-GB')}</div>
-                                                    </div>
-                                                )}
+                                                <PaymentAction
+                                                    reading={reading}
+                                                    apartmentId={apartment.id}
+                                                    roomNumber={room.roomNumber}
+                                                />
                                             </td>
                                         </tr>
                                     )

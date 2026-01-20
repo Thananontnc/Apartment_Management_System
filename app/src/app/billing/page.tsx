@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import BackButton from '@/components/BackButton';
+import BackButton from '@/components/ui/BackButton';
 
 export default async function BillingSelectionPage() {
     const apartments = await prisma.apartment.findMany({

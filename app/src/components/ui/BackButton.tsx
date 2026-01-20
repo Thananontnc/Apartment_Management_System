@@ -4,19 +4,23 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useI18n } from "@/providers/I18nProvider";
 
-export default function BackButton({ label = "Back", href }: { label?: string, href?: string }) {
+export default function BackButton({ label = "Back", href }: { label?: React.ReactNode, href?: string }) {
     const router = useRouter();
     const { t } = useI18n();
 
-    // Map common labels to translation keys
-    const labelKeyMap: Record<string, string> = {
-        "Back to Dashboard": "back_to_dashboard",
-        "Back to Properties": "back_to_properties",
-        "Back to Selection": "back_to_selection",
-        "Back": "back"
-    };
-
-    const displayLabel = labelKeyMap[label] ? t(labelKeyMap[label]) : label;
+    let displayLabel = label;
+    if (typeof label === 'string') {
+        const labelKeyMap: Record<string, string> = {
+            "Back to Dashboard": "back_to_dashboard",
+            "Back to Properties": "back_to_properties",
+            "Back to Selection": "back_to_selection",
+            "Back": "back",
+            "Executive Dashboard": "back_to_dashboard", // Added missing mapping
+            "Portfolio Overview": "back_to_properties", // Added missing mapping
+            "Asset Selection": "back_to_assets" // Added missing mapping
+        };
+        displayLabel = labelKeyMap[label] ? t(labelKeyMap[label]) : label;
+    }
 
     if (href) {
         return (
