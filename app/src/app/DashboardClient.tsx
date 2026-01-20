@@ -23,18 +23,18 @@ export default function DashboardClient({ stats, apartments, currentMonthName }:
     const { t } = useI18n();
 
     return (
-        <main className="container animate-fade-in" style={{ paddingBottom: '6rem' }}>
+        <main className="container animate-fade-in" style={{ paddingBottom: '8rem' }}>
             {/* Header Section */}
-            <header className="flex-between" style={{ padding: '60px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+            <header className="flex-between" style={{ padding: '80px 0 60px 0' }}>
                 <div>
-                    <h1 className="text-gradient" style={{ marginBottom: '12px' }}>{t('dashboard')}</h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>{t('welcome')}</p>
+                    <h1 className="text-gradient" style={{ marginBottom: '16px', letterSpacing: '-0.05em' }}>{t('dashboard')}</h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem', fontWeight: '500' }}>{t('welcome')}</p>
                 </div>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                    <Link href="/apartments" className="btn btn-primary">
-                        + {t('add_property')}
+                <div style={{ display: 'flex', gap: '20px' }}>
+                    <Link href="/apartments" className="btn btn-primary" style={{ padding: '16px 36px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>+</span> {t('add_property')}
                     </Link>
-                    <button onClick={() => signOut()} className="btn btn-secondary">
+                    <button onClick={() => signOut()} className="btn btn-secondary" style={{ padding: '16px 28px' }}>
                         {t('logout')}
                     </button>
                 </div>
@@ -42,119 +42,128 @@ export default function DashboardClient({ stats, apartments, currentMonthName }:
 
             {/* KPI Cards */}
             <section className="grid-dashboard">
-                <div className="glass-card hover-effect">
-                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('projected_revenue')}</h3>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', marginTop: '16px', color: 'var(--text-dark)' }}>฿{stats.projectedRevenue.toLocaleString()}</div>
-                    <div style={{ marginTop: '12px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                        Invoiced/Target for {currentMonthName}
+                <div className="glass-card hover-effect" style={{ borderTop: '4px solid var(--primary)' }}>
+                    <h3 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '800' }}>{t('projected_revenue')}</h3>
+                    <div style={{ fontSize: '3rem', fontWeight: '900', marginTop: '20px', color: 'var(--text-dark)', letterSpacing: '-0.04em' }}>฿{stats.projectedRevenue.toLocaleString()}</div>
+                    <div className="badge blue" style={{ marginTop: '20px' }}>
+                        Target for {currentMonthName}
                     </div>
                 </div>
 
-                <div className="glass-card hover-effect" style={{ borderLeft: '4px solid var(--success)' }}>
-                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('net_profit')}</h3>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', marginTop: '16px', color: 'var(--success)' }}>฿{stats.netProfit.toLocaleString()}</div>
-                    <div style={{ marginTop: '12px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                <div className="glass-card hover-effect" style={{ borderTop: '4px solid var(--success)' }}>
+                    <h3 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '800' }}>{t('net_profit')}</h3>
+                    <div style={{ fontSize: '3rem', fontWeight: '900', marginTop: '20px', color: 'var(--success)', letterSpacing: '-0.04em' }}>฿{stats.netProfit.toLocaleString()}</div>
+                    <div className="badge green" style={{ marginTop: '20px' }}>
                         Net Cash flow
                     </div>
                 </div>
 
-                <div className="glass-card hover-effect">
-                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text_muted)', textTransform: 'uppercase' }}>{t('collection_rate')}</h3>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', marginTop: '16px', color: stats.collectionRate > 90 ? 'var(--success)' : 'var(--warning)' }}>{stats.collectionRate}%</div>
-                    {stats.outstandingDebt > 0 && (
-                        <div style={{ marginTop: '12px', fontSize: '0.9rem', color: 'var(--danger)', fontWeight: '600' }}>
+                <div className="glass-card hover-effect" style={{ borderTop: '4px solid var(--warning)' }}>
+                    <h3 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '800' }}>{t('collection_rate')}</h3>
+                    <div style={{ fontSize: '3rem', fontWeight: '900', marginTop: '20px', color: stats.collectionRate > 90 ? 'var(--success)' : 'var(--warning)', letterSpacing: '-0.04em' }}>{stats.collectionRate}%</div>
+                    {stats.outstandingDebt > 0 ? (
+                        <div className="badge red" style={{ marginTop: '20px' }}>
                             ฿{stats.outstandingDebt.toLocaleString()} Pending
                         </div>
+                    ) : (
+                        <div className="badge green" style={{ marginTop: '20px' }}>Fully Collected</div>
                     )}
                 </div>
 
-                <div className="glass-card hover-effect">
-                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('occupancy_rate')}</h3>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', marginTop: '16px', color: 'var(--text-dark)' }}>{stats.occupancyRate}%</div>
-                    <div style={{ marginTop: '12px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                <div className="glass-card hover-effect" style={{ borderTop: '4px solid var(--blue)' }}>
+                    <h3 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '800' }}>{t('occupancy_rate')}</h3>
+                    <div style={{ fontSize: '3rem', fontWeight: '900', marginTop: '20px', color: 'var(--text-dark)', letterSpacing: '-0.04em' }}>{stats.occupancyRate}%</div>
+                    <div className="badge blue" style={{ marginTop: '20px' }}>
                         {stats.occupiedRooms} / {stats.totalRooms} {t('rooms')}
                     </div>
                 </div>
             </section>
 
             {/* Quick Actions */}
-            <section style={{ marginTop: '64px' }}>
-                <h2 style={{ marginBottom: '32px' }}>{t('quick_actions')}</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-                    <Link href="/utilities" className="glass-card hover-effect" style={{ textDecoration: 'none' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '16px' }}>⚡</div>
-                        <h3 style={{ marginBottom: '8px' }}>{t('utility_manager')}</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>Record meters and generate monthly bills.</p>
+            <section style={{ marginTop: '100px' }}>
+                <h2 className="text-gradient" style={{ marginBottom: '40px' }}>{t('quick_actions')}</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
+                    <Link href="/utilities" className="glass-card hover-effect" style={{ textDecoration: 'none', minHeight: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: '20px' }}>⚡</div>
+                        <h3 style={{ marginBottom: '12px', fontSize: '1.5rem' }}>{t('utility_manager')}</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Record meters and generate monthly bills.</p>
                     </Link>
-                    <Link href="/billing" className="glass-card hover-effect" style={{ textDecoration: 'none' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '16px' }}>💰</div>
-                        <h3 style={{ marginBottom: '8px' }}>{t('billing_payments')}</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>Manage collections and unpaid invoices.</p>
+                    <Link href="/billing" className="glass-card hover-effect" style={{ textDecoration: 'none', minHeight: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: '20px' }}>💰</div>
+                        <h3 style={{ marginBottom: '12px', fontSize: '1.5rem' }}>{t('billing_payments')}</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Manage collections and unpaid invoices.</p>
                     </Link>
-                    <Link href="/finance" className="glass-card hover-effect" style={{ textDecoration: 'none', border: '1px solid var(--primary)' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '16px' }}>📈</div>
-                        <h3 style={{ marginBottom: '8px' }}>{t('finance')}</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>Analyze profit, mortgage, and operational costs.</p>
+                    <Link href="/finance" className="glass-card hover-effect" style={{ textDecoration: 'none', border: '1px solid var(--primary-glow)', background: 'linear-gradient(135deg, var(--glass-bg), rgba(var(--primary-rgb), 0.05))', minHeight: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: '20px' }}>📈</div>
+                        <h3 style={{ marginBottom: '12px', fontSize: '1.5rem' }}>{t('finance')}</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Analyze profit, mortgage, and operational costs.</p>
                     </Link>
-                    <Link href="/apartments" className="glass-card hover-effect" style={{ textDecoration: 'none' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '16px' }}>📜</div>
-                        <h3 style={{ marginBottom: '8px' }}>History & Invoices</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>View past bills and download/print monthly receipts.</p>
-                    </Link>
-                    <Link href="/apartments" className="glass-card hover-effect" style={{ textDecoration: 'none' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '16px' }}>🏢</div>
-                        <h3 style={{ marginBottom: '8px' }}>{t('properties')}</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>Manage building data and room prices.</p>
+                    <Link href="/apartments" className="glass-card hover-effect" style={{ textDecoration: 'none', minHeight: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: '20px' }}>🏢</div>
+                        <h3 style={{ marginBottom: '12px', fontSize: '1.5rem' }}>{t('properties')}</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Manage building data and room sets.</p>
                     </Link>
                 </div>
             </section>
 
             {/* Property Overview */}
-            <section style={{ marginTop: '64px' }}>
-                <h2 style={{ marginBottom: '40px' }}>{t('property_overview')}</h2>
+            <section style={{ marginTop: '100px' }}>
+                <div className="flex-between" style={{ marginBottom: '48px' }}>
+                    <h2 className="text-gradient">{t('property_overview')}</h2>
+                    <Link href="/apartments" className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>View All Properties →</Link>
+                </div>
 
                 {apartments.length === 0 ? (
-                    <div className="card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No properties found. <Link href="/apartments" className="text-primary" style={{ fontWeight: '600' }}>{t('add_property')}</Link>.
+                    <div className="card" style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)', borderStyle: 'dashed', borderWidth: '2px' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🏢</div>
+                        <p style={{ fontSize: '1.2rem', marginBottom: '24px' }}>No properties found yet.</p>
+                        <Link href="/apartments" className="btn btn-primary">{t('add_property')}</Link>
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gap: '48px' }}>
+                    <div style={{ display: 'grid', gap: '64px' }}>
                         {apartments.map((apt) => (
-                            <div key={apt.id} className="glass-card">
-                                <div className="flex-between" style={{ marginBottom: '32px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '24px' }}>
-                                    <div>
-                                        <h3 style={{ fontSize: '2rem' }}>{apt.name}</h3>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginTop: '4px' }}>{apt.address}</p>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '12px' }}>
-                                        <Link href={`/apartments/${apt.id}/invoices`} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>
-                                            📜 View History & Invoices
-                                        </Link>
-                                        <Link href={`/apartments/${apt.id}`} className="btn btn-secondary" style={{ fontSize: '0.9rem' }}>
-                                            {t('edit_property_info')}
-                                        </Link>
+                            <div key={apt.id} className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
+                                <div style={{ padding: '40px', borderBottom: '1px solid var(--border-subtle)', background: 'linear-gradient(90deg, var(--bg-panel), transparent)' }}>
+                                    <div className="flex-between">
+                                        <div>
+                                            <h3 style={{ fontSize: '2.25rem', marginBottom: '8px' }}>{apt.name}</h3>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
+                                                <span>📍</span> {apt.address}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '16px' }}>
+                                            <Link href={`/apartments/${apt.id}/invoices`} className="btn btn-secondary">
+                                                📜 History
+                                            </Link>
+                                            <Link href={`/apartments/${apt.id}`} className="btn btn-secondary">
+                                                ⚙️ Manage
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Rooms Grid */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-                                    {apt.rooms.length === 0 ? (
-                                        <div style={{ gridColumn: '1/-1', color: 'var(--text-muted)', fontStyle: 'italic', padding: '20px' }}>No rooms added yet.</div>
-                                    ) : (
-                                        apt.rooms.map((room: any) => (
-                                            <div key={room.id} className="card hover-effect" style={{ padding: '20px', background: 'var(--bg-panel-transparent)' }}>
-                                                <div className="flex-between" style={{ alignItems: 'flex-start' }}>
-                                                    <span style={{ fontWeight: '700', fontSize: '1.25rem' }}>{room.roomNumber}</span>
-                                                    <span className={`badge ${room.status === 'OCCUPIED' ? 'green' : 'red'}`}>
-                                                        {t(room.status.toLowerCase())}
-                                                    </span>
-                                                </div>
-                                                <div style={{ marginTop: '16px', fontSize: '1rem', color: 'var(--text-main)', fontWeight: '500' }}>
-                                                    ฿{room.baseRent.toLocaleString()}
-                                                </div>
+                                <div style={{ padding: '40px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '24px' }}>
+                                        {apt.rooms.length === 0 ? (
+                                            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.1)', borderRadius: '16px' }}>
+                                                No rooms added yet.
                                             </div>
-                                        ))
-                                    )}
+                                        ) : (
+                                            apt.rooms.map((room: any) => (
+                                                <div key={room.id} className="card hover-effect" style={{ padding: '24px', background: 'var(--bg-app)' }}>
+                                                    <div className="flex-between" style={{ alignItems: 'center', marginBottom: '20px' }}>
+                                                        <span style={{ fontWeight: '800', fontSize: '1.5rem', color: 'var(--text-dark)' }}>{room.roomNumber}</span>
+                                                        <span className={`badge ${room.status === 'OCCUPIED' ? 'green' : 'blue'}`} style={{ fontSize: '0.65rem' }}>
+                                                            {t(room.status.toLowerCase())}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ fontSize: '1.1rem', color: 'var(--primary)', fontWeight: '700' }}>
+                                                        ฿{room.baseRent.toLocaleString()}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}

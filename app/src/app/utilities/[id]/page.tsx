@@ -21,13 +21,8 @@ export default async function RecordUtilitiesPage({ params, searchParams }: {
                 orderBy: { roomNumber: 'asc' },
                 include: {
                     readings: {
-                        where: {
-                            recordDate: {
-                                lt: targetDateStart
-                            }
-                        },
                         orderBy: { recordDate: 'desc' },
-                        take: 1
+                        // We'll filter and handle previous vs current in the component logic
                     }
                 }
             }
@@ -36,7 +31,25 @@ export default async function RecordUtilitiesPage({ params, searchParams }: {
 
     if (!apartment) return <div>Apartment not found</div>;
 
-    const sortedRooms = [...apartment.rooms].sort((a, b) => {
+    const targetMonthStart = new Date(year, month - 1, 1);
+    const targetMonthEnd = new Date(year, month, 0, 23, 59, 59);
+
+    const roomsWithReadings = apartment.rooms.map(room => {
+        const currentReading = room.readings.find(r =>
+            r.recordDate >= targetMonthStart && r.recordDate <= targetMonthEnd
+        );
+        const previousReading = room.readings.find(r =>
+            r.recordDate < targetMonthStart
+        );
+
+        return {
+            ...room,
+            currentReading: currentReading || null,
+            previousReading: previousReading || null
+        };
+    });
+
+    const sortedRooms = roomsWithReadings.sort((a, b) => {
         const numA = parseInt(a.roomNumber.replace(/\D/g, '')) || 0;
         const numB = parseInt(b.roomNumber.replace(/\D/g, '')) || 0;
         return numA - numB;

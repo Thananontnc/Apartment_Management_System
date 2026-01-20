@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import BackButton from '@/components/BackButton';
 import { submitReadings } from '@/app/actions/utilities';
@@ -15,44 +15,73 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
     const router = useRouter();
     const searchParams = useSearchParams();
     const currentMonth = searchParams.get('month') || new Date().toISOString().slice(0, 7);
+
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     const [showMonthGrid, setShowMonthGrid] = useState(false);
+    const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentYear = parseInt(currentMonth.split('-')[0]);
     const currentMonthIdx = parseInt(currentMonth.split('-')[1]) - 1;
 
-    // Progress Calculation
-    const totalRooms = sortedRooms.length;
-    const completedRooms = sortedRooms.filter(r => (drafts[`elec_${r.id}`] || drafts[`water_${r.id}`])).length;
-    const progressPercent = totalRooms > 0 ? Math.round((completedRooms / totalRooms) * 100) : 0;
+    // Progress Calculation - Memoized
+    const { progressPercent, completedRooms } = useMemo(() => {
+        const total = sortedRooms.length;
+        const completed = sortedRooms.filter(r => (drafts[`elec_${r.id}`] || drafts[`water_${r.id}`])).length;
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return { progressPercent: percent, completedRooms: completed };
+    }, [sortedRooms, drafts]);
 
-    // Load drafts on mount or month change
+    // Initialize drafts from server data (Edit mode) or localStorage
     useEffect(() => {
         const key = `utility_draft_${apartment.id}_${currentMonth}`;
         const saved = localStorage.getItem(key);
+
+        // Initial data mapping from server
+        const initialMap: Record<string, string> = {};
+        sortedRooms.forEach((room: any) => {
+            if (room.currentReading) {
+                initialMap[`elec_${room.id}`] = room.currentReading.elecMeter.toString();
+                initialMap[`prevElec_${room.id}`] = room.currentReading.elecMeterPrev.toString();
+                initialMap[`water_${room.id}`] = room.currentReading.waterMeter.toString();
+                initialMap[`prevWater_${room.id}`] = room.currentReading.waterMeterPrev.toString();
+            } else if (room.previousReading) {
+                initialMap[`prevElec_${room.id}`] = room.previousReading.elecMeter.toString();
+                initialMap[`prevWater_${room.id}`] = room.previousReading.waterMeter.toString();
+            }
+        });
+
         if (saved) {
             try {
-                setDrafts(JSON.parse(saved));
+                const parsed = JSON.parse(saved);
+                // Merge drafts on top of initial data
+                setDrafts({ ...initialMap, ...parsed });
             } catch (e) {
-                console.error("Failed to parse drafts", e);
+                setDrafts(initialMap);
             }
         } else {
-            setDrafts({});
+            setDrafts(initialMap);
         }
-    }, [apartment.id, currentMonth]);
+    }, [apartment.id, currentMonth, sortedRooms]);
 
     const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         router.push(`?month=${val}`);
     };
 
+    // Debounced LocalStorage Saving (Performance Optimization)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const key = `utility_draft_${apartment.id}_${currentMonth}`;
+            localStorage.setItem(key, JSON.stringify(drafts));
+        }, 800); // Wait 800ms after last activity before writing to disk
+
+        return () => clearTimeout(timer);
+    }, [drafts, apartment.id, currentMonth]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        const key = `utility_draft_${apartment.id}_${currentMonth}`;
-        const updatedDrafts = { ...drafts, [name]: value };
-        setDrafts(updatedDrafts);
-        localStorage.setItem(key, JSON.stringify(updatedDrafts));
+        setDrafts(prev => ({ ...prev, [name]: value }));
     };
 
     const handleKeyDown = (e: React.KeyboardEvent, roomId: string, type: 'elec' | 'water') => {
@@ -65,6 +94,29 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
             }
         }
     };
+
+    // Memoized Financial Totals
+    const { buildingRent, buildingElec, buildingWater, totalRevenue } = useMemo(() => {
+        let bRent = 0;
+        let bElec = 0;
+        let bWater = 0;
+        sortedRooms.forEach(room => {
+            bRent += room.baseRent;
+            const pE = parseFloat(drafts[`prevElec_${room.id}`] || '0');
+            const cE = parseFloat(drafts[`elec_${room.id}`] || '0');
+            if (cE > pE) bElec += (cE - pE) * apartment.defaultElecPrice;
+
+            const pW = parseFloat(drafts[`prevWater_${room.id}`] || '0');
+            const cW = parseFloat(drafts[`water_${room.id}`] || '0');
+            if (cW > pW) bWater += (cW - pW) * apartment.defaultWaterPrice;
+        });
+        return {
+            buildingRent: bRent,
+            buildingElec: bElec,
+            buildingWater: bWater,
+            totalRevenue: bRent + bElec + bWater
+        };
+    }, [sortedRooms, drafts, apartment.defaultElecPrice, apartment.defaultWaterPrice]);
 
     const handleFormSubmit = () => {
         const key = `utility_draft_${apartment.id}_${currentMonth}`;
@@ -80,143 +132,200 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
     return (
         <>
             <style jsx>{`
+                .room-card-grid {
+                    display: grid;
+                    grid-template-columns: 140px 1fr 1.5fr;
+                    gap: 32px;
+                    padding: 32px;
+                    align-items: center;
+                }
+                .utility-meters-row {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 24px;
+                }
+                .room-number-display {
+                    font-size: 2.5rem;
+                    font-weight: 900;
+                    color: var(--text-dark);
+                    letter-spacing: -2px;
+                }
                 @media (max-width: 1024px) {
                     .room-card-grid {
-                        grid-template-columns: 80px 1fr !important;
+                        grid-template-columns: 120px 1fr !important;
                         gap: 24px !important;
                         padding: 24px !important;
                     }
                     .utility-meters-row {
                         grid-column: 1 / -1;
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 16px;
                     }
                     .room-number-display {
                         font-size: 2rem !important;
-                    }
-                    .sticky-control-bar {
-                        flex-direction: column !important;
-                        gap: 16px !important;
-                        padding: 20px !important;
-                    }
-                    .cycle-controls-wrapper {
-                        flex-direction: column !important;
-                        gap: 16px !important;
-                        width: 100%;
-                    }
-                    .rate-badges-wrapper {
-                        justify-content: center;
-                        flex-wrap: wrap;
                     }
                 }
                 @media (max-width: 768px) {
                     .room-card-grid {
                         grid-template-columns: 1fr !important;
-                        gap: 20px !important;
-                        padding: 20px !important;
                     }
                     .utility-meters-row {
                         grid-template-columns: 1fr !important;
                     }
-                    .room-number-display {
-                        font-size: 1.75rem !important;
-                    }
-                    .header-title {
-                        font-size: 1.75rem !important;
-                    }
-                    .month-picker-modal {
-                        width: 90% !important;
-                        max-width: 340px !important;
-                    }
                 }
             `}</style>
-            <main className="container animate-fade-in" style={{ paddingBottom: '6rem' }}>
-                {/* Month Picker Overlay */}
-                {showMonthGrid && (
+            {/* Month Picker Overlay */}
+            {showMonthGrid && (
+                <div
+                    style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 1000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(16px)',
+                        display: 'flex', justifyContent: 'center', alignItems: 'center',
+                        padding: '20px',
+                        animation: 'fadeInUp 0.4s ease-out forwards'
+                    }}
+                    onClick={() => setShowMonthGrid(false)}
+                >
                     <div
+                        className="glass-card"
                         style={{
-                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                            zIndex: 100, background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(10px)',
-                            display: 'flex', justifyContent: 'center', alignItems: 'center',
-                            padding: '20px'
+                            padding: '40px',
+                            width: '420px',
+                            maxWidth: '95vw',
+                            borderRadius: '32px',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)'
                         }}
-                        onClick={() => setShowMonthGrid(false)}
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        <div
-                            className="glass-card month-picker-modal"
-                            style={{ padding: '32px', width: '360px', maxWidth: '90vw', borderRadius: '32px' }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex-between" style={{ marginBottom: '24px' }}>
-                                <button type="button" onClick={() => navigateToMonth(currentYear - 1, currentMonthIdx)} className="btn btn-secondary icon-btn" style={{ minWidth: '44px', minHeight: '44px' }}>←</button>
-                                <h3 style={{ fontSize: '1.5rem', fontWeight: '900' }}>{currentYear}</h3>
-                                <button type="button" onClick={() => navigateToMonth(currentYear + 1, currentMonthIdx)} className="btn btn-secondary icon-btn" style={{ minWidth: '44px', minHeight: '44px' }}>→</button>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                                {months.map((m, idx) => (
-                                    <button
-                                        key={m}
-                                        type="button"
-                                        onClick={() => navigateToMonth(currentYear, idx)}
-                                        className={`btn ${idx === currentMonthIdx ? 'btn-primary' : 'btn-secondary'}`}
-                                        style={{ padding: '12px 0', minHeight: '44px', borderRadius: '14px', fontSize: '0.9rem', fontWeight: '700' }}
-                                    >
-                                        {m}
-                                    </button>
-                                ))}
-                            </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexDirection: 'row' }}>
+                            <button type="button" onClick={() => navigateToMonth(currentYear - 1, currentMonthIdx)} className="btn btn-secondary icon-btn" style={{ minWidth: '48px', minHeight: '48px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)' }}>←</button>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: '950', letterSpacing: '-0.02em', margin: '0 16px', background: 'linear-gradient(135deg, #fff 0%, #aaa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{currentYear} Cycle</h3>
+                            <button type="button" onClick={() => navigateToMonth(currentYear + 1, currentMonthIdx)} className="btn btn-secondary icon-btn" style={{ minWidth: '48px', minHeight: '48px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)' }}>→</button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                            {months.map((m, idx) => (
+                                <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => navigateToMonth(currentYear, idx)}
+                                    className={`btn ${idx === currentMonthIdx ? 'btn-primary' : 'btn-secondary'}`}
+                                    style={{
+                                        padding: '16px 0',
+                                        borderRadius: '16px',
+                                        fontSize: '0.95rem',
+                                        fontWeight: '800',
+                                        background: idx === currentMonthIdx ? '' : 'rgba(255,255,255,0.03)',
+                                        border: idx === currentMonthIdx ? '' : '1px solid var(--border-subtle)',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    {m}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                )}
+                </div>
+            )}
+
+            <main className="container animate-fade-in" style={{ paddingBottom: '8rem' }}>
+
 
                 <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '24px' }}>
-                    <BackButton label="Back to Selection" href="/utilities" />
+                    <BackButton label="Asset Selection" href="/utilities" />
                 </div>
 
-                <header style={{ padding: '32px 0 40px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '20px' }}>
+                <header style={{ padding: '40px 0 60px 0' }}>
+                    <div className="flex-between flex-wrap gap-32">
                         <div>
-                            <h1 className="text-gradient header-title" style={{ fontSize: '2.5rem' }}>Meter Hub: {apartment.name}</h1>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginTop: '8px' }}>Record monthly utility usage for all rooms.</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <h1 className="text-gradient">Meter Hub: {apartment.name}</h1>
+                                {sortedRooms.some(r => r.currentReading) && <span className="badge blue" style={{ borderRadius: '12px', padding: '8px 16px', fontWeight: '800' }}>✏️ Revision Mode</span>}
+                            </div>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem', marginTop: '12px', fontWeight: '500' }}>Precision utility monitoring & monthly statement generation.</p>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Current Progress</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--primary)' }}>{progressPercent}%</div>
+                        <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: '800' }}>Operational Audit</div>
+                                <div style={{ fontSize: '2.5rem', fontWeight: '950', color: 'var(--primary)', letterSpacing: '-1px' }}>{progressPercent}% <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>Complete</span></div>
+                            </div>
+                            <div className="no-print" style={{ display: 'flex', background: 'var(--bg-panel)', padding: '6px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                                <button type="button" onClick={() => setViewMode('card')} className={`btn ${viewMode === 'card' ? 'btn-primary' : ''}`} style={{ padding: '10px 24px', fontSize: '0.85rem', borderRadius: '12px', minWidth: '100px' }}>Cards</button>
+                                <button type="button" onClick={() => setViewMode('table')} className={`btn ${viewMode === 'table' ? 'btn-primary' : ''}`} style={{ padding: '10px 24px', fontSize: '0.85rem', borderRadius: '12px', minWidth: '100px' }}>Table</button>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Modern Progress Bar */}
-                    <div style={{ marginTop: '24px', height: '6px', background: 'var(--bg-panel)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${progressPercent}%`, background: 'var(--primary)', transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
+                    <div style={{ marginTop: '40px', height: '10px', background: 'var(--bg-panel)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                        <div style={{ height: '100%', width: `${progressPercent}%`, background: 'linear-gradient(90deg, var(--primary), var(--accent))', transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)', boxShadow: '0 0 20px var(--primary-glow)' }}></div>
                     </div>
                 </header>
 
                 <form
                     action={submitReadings.bind(null, apartment.id)}
                     onSubmit={handleFormSubmit}
-                    style={{ marginTop: '40px' }}
+                    style={{ marginTop: '20px' }}
                 >
-                    {/* Custom Month/Cycle Control Strip */}
-                    <div className="glass-card sticky-control-bar" style={{
+                    {/* Building Insight Summary */}
+                    <div className="glass-card" style={{
                         marginBottom: '48px',
-                        padding: '24px 32px',
+                        padding: '40px',
+                        background: 'linear-gradient(135deg, var(--bg-panel), rgba(var(--primary-rgb), 0.05))',
+                        display: 'grid',
+                        gridTemplateColumns: '1.2fr 2fr',
+                        gap: '48px',
+                        borderTop: '4px solid var(--primary)',
+                        alignItems: 'center'
+                    }}>
+                        {/* Memoized Financial Data View */}
+                        <div>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '2px' }}>Institutional Revenue Flow</label>
+                            <div style={{ fontSize: '3.5rem', fontWeight: '950', color: 'var(--text-dark)', marginTop: '12px', letterSpacing: '-2px' }}>
+                                ฿<span className="text-gradient">{totalRevenue.toLocaleString()}</span>
+                            </div>
+                            <p style={{ color: 'var(--success)', fontSize: '0.9rem', fontWeight: '700', marginTop: '8px' }}>Estimated Target for {months[currentMonthIdx]} Cycle</p>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                            <div className="glass-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
+                                <div style={{ fontSize: '1.5rem', marginBottom: '12px' }}>🏦</div>
+                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>UNIT RENT</label>
+                                <div style={{ fontWeight: '900', fontSize: '1.4rem', marginTop: '4px' }}>฿{buildingRent.toLocaleString()}</div>
+                            </div>
+                            <div className="glass-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
+                                <div style={{ fontSize: '1.5rem', marginBottom: '12px' }}>⚡</div>
+                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>ENERGY</label>
+                                <div style={{ fontWeight: '900', fontSize: '1.4rem', marginTop: '4px', color: 'var(--warning)' }}>฿{buildingElec.toLocaleString()}</div>
+                            </div>
+                            <div className="glass-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: 'none' }}>
+                                <div style={{ fontSize: '1.5rem', marginBottom: '12px' }}>💧</div>
+                                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>WATER</label>
+                                <div style={{ fontWeight: '900', fontSize: '1.4rem', marginTop: '4px', color: 'var(--blue)' }}>฿{buildingWater.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Cycle Control Strip */}
+                    <div className="glass-card no-print" style={{
+                        marginBottom: '48px',
+                        padding: '24px 40px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         position: 'sticky',
-                        top: '20px',
-                        zIndex: 10,
-                        boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)',
-                        gap: '20px',
-                        flexWrap: 'wrap'
+                        top: '24px',
+                        zIndex: 100,
+                        gap: '24px',
+                        flexWrap: 'wrap',
+                        border: '1px solid var(--glass-border)',
+                        background: 'rgba(var(--bg-panel-rgb), 0.85)',
+                        backdropFilter: 'blur(20px)',
+                        borderRadius: '24px',
+                        boxShadow: 'var(--shadow-glow)'
                     }}>
-                        <div className="cycle-controls-wrapper" style={{ display: 'flex', gap: '40px', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                                <label style={{ fontWeight: '800', color: 'var(--text-dark)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                    Billing Cycle
+                        <div style={{ display: 'flex', gap: '48px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                <label style={{ fontWeight: '950', color: 'var(--text-dark)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
+                                    Cycle
                                 </label>
-                                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-app)', borderRadius: '16px', padding: '4px', border: '1px solid var(--border-subtle)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-app)', borderRadius: '16px', padding: '6px', border: '1px solid var(--border-subtle)' }}>
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -225,28 +334,22 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                             router.push(`?month=${d.toISOString().slice(0, 7)}`);
                                         }}
                                         className="btn btn-secondary icon-btn"
-                                        style={{ padding: '8px 12px', borderRadius: '12px', minWidth: '44px', minHeight: '44px', border: 'none' }}
-                                    >
-                                        ←
-                                    </button>
+                                        style={{ padding: '8px 12px', borderRadius: '12px', minWidth: '44px', border: 'none' }}
+                                    >←</button>
 
                                     <button
                                         type="button"
                                         onClick={() => setShowMonthGrid(true)}
-                                        className="btn-cycle-display"
                                         style={{
-                                            padding: '8px 24px',
-                                            borderRadius: '10px',
+                                            padding: '0 24px',
                                             border: 'none',
-                                            fontWeight: '900',
+                                            fontWeight: '950',
                                             background: 'transparent',
-                                            fontSize: '1.25rem',
+                                            fontSize: '1.3rem',
                                             color: 'var(--primary)',
-                                            minWidth: '180px',
-                                            minHeight: '44px',
+                                            minWidth: '220px',
                                             textAlign: 'center',
-                                            cursor: 'pointer',
-                                            transition: 'transform 0.2s ease'
+                                            cursor: 'pointer'
                                         }}
                                     >
                                         {months[currentMonthIdx]} {currentYear}
@@ -261,181 +364,190 @@ export default function UtilitiesClient({ apartment, sortedRooms }: UtilitiesCli
                                             router.push(`?month=${d.toISOString().slice(0, 7)}`);
                                         }}
                                         className="btn btn-secondary icon-btn"
-                                        style={{ padding: '8px 12px', borderRadius: '12px', minWidth: '44px', minHeight: '44px', border: 'none' }}
-                                    >
-                                        →
-                                    </button>
+                                        style={{ padding: '8px 12px', borderRadius: '12px', minWidth: '44px', border: 'none' }}
+                                    >→</button>
                                 </div>
                             </div>
-                            <div className="rate-badges-wrapper" style={{ display: 'flex', gap: '12px' }}>
-                                <div className="badge blue" style={{ padding: '10px 20px', fontSize: '0.9rem' }}>⚡ ฿{apartment.defaultElecPrice} / unit</div>
-                                <div className="badge blue" style={{ padding: '10px 20px', fontSize: '0.9rem' }}>💧 ฿{apartment.defaultWaterPrice} / unit</div>
+                            <div style={{ display: 'flex', gap: '16px' }}>
+                                <div className="badge blue" style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '12px' }}>⚡ ฿{apartment.defaultElecPrice}</div>
+                                <div className="badge blue" style={{ padding: '12px 24px', fontSize: '0.9rem', borderRadius: '12px' }}>💧 ฿{apartment.defaultWaterPrice}</div>
                             </div>
                         </div>
-                        <button type="submit" className="btn btn-secondary" style={{ padding: '14px 32px', minHeight: '48px', borderRadius: '16px', fontWeight: '700' }}>
-                            💾 Save and Preview
+                        <button type="submit" className="btn btn-primary hover-effect" style={{ padding: '16px 48px', height: '60px', borderRadius: '16px', fontWeight: '950', fontSize: '1rem', boxShadow: 'var(--shadow-glow)' }}>
+                            🚀 Finalize Batch Records
                         </button>
                     </div>
 
-                    {/* Simplified List View */}
-                    <div style={{ display: 'grid', gap: '24px' }}>
-                        {sortedRooms.map((room) => {
-                            const lastReading = room.readings[0];
+                    {viewMode === 'card' ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '32px' }}>
+                            {sortedRooms.map((room) => {
+                                const prevElec = parseFloat(drafts[`prevElec_${room.id}`] || '0');
+                                const currElec = parseFloat(drafts[`elec_${room.id}`] || '0');
+                                const elecDiff = Math.max(0, currElec - prevElec);
 
-                            // Real-time calculation logic
-                            const prevElec = parseFloat(drafts[`prevElec_${room.id}`] || (lastReading?.elecMeter || 0).toString());
-                            const currElec = parseFloat(drafts[`elec_${room.id}`] || '0');
-                            const elecUsage = currElec > 0 ? (currElec - prevElec) : 0;
-                            const isElecError = currElec > 0 && elecUsage < 0;
+                                const prevWater = parseFloat(drafts[`prevWater_${room.id}`] || '0');
+                                const currWater = parseFloat(drafts[`water_${room.id}`] || '0');
+                                const waterUsage = Math.max(0, currWater - prevWater);
 
-                            const prevWater = parseFloat(drafts[`prevWater_${room.id}`] || (lastReading?.waterMeter || 0).toString());
-                            const currWater = parseFloat(drafts[`water_${room.id}`] || '0');
-                            const waterUsage = currWater > 0 ? (currWater - prevWater) : 0;
-                            const isWaterError = currWater > 0 && waterUsage < 0;
+                                const hasData = drafts[`elec_${room.id}`] || drafts[`water_${room.id}`];
 
-                            return (
-                                <div key={room.id} className="card room-card-grid" style={{
-                                    padding: '32px',
-                                    display: 'grid',
-                                    gridTemplateColumns: '120px 1fr 1fr',
-                                    gap: '48px',
-                                    alignItems: 'start',
-                                    border: (isElecError || isWaterError) ? '2px solid var(--danger)' : '1px solid var(--border-subtle)',
-                                    transition: 'all 0.2s ease',
-                                    transform: drafts[`elec_${room.id}`] || drafts[`water_${room.id}`] ? 'scale(1.01)' : 'scale(1)',
-                                    boxShadow: drafts[`elec_${room.id}`] || drafts[`water_${room.id}`] ? '0 10px 20px -10px rgba(0,0,0,0.1)' : 'none'
-                                }}>
-                                    <div style={{ paddingTop: '8px' }}>
-                                        <h2 className="room-number-display" style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--text-dark)' }}>{room.roomNumber}</h2>
-                                        <div className="badge" style={{ marginTop: '8px', fontSize: '0.75rem' }}>UNIT</div>
-                                        <input type="hidden" name="roomIds[]" value={room.id} />
-                                    </div>
-
-                                    <div className="utility-meters-row" style={{ display: 'contents' }}>
-                                        {/* Electricity Card */}
-                                        <div style={{
-                                            background: 'var(--bg-panel)',
-                                            padding: '24px',
-                                            borderRadius: '20px',
-                                            border: isElecError ? '1px solid var(--danger)' : '1px solid transparent'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-                                                <span style={{ fontWeight: '700', color: isElecError ? 'var(--danger)' : 'var(--text-dark)' }}>⚡ ELECTRICITY</span>
-                                                {currElec > 0 && !isElecError && (
-                                                    <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: '700' }}>+ {elecUsage.toFixed(1)} units</span>
-                                                )}
+                                return (
+                                    <div key={room.id} className="glass-card hover-effect" style={{
+                                        padding: '0',
+                                        overflow: 'hidden',
+                                        border: hasData ? '2px solid var(--primary-glow)' : '1px solid var(--glass-border)',
+                                        background: hasData ? 'rgba(var(--primary-rgb), 0.04)' : ''
+                                    }}>
+                                        <div style={{ padding: '32px', display: 'grid', gridTemplateColumns: '140px 1fr', gap: '32px', alignItems: 'center' }}>
+                                            <div style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                background: 'var(--bg-panel)',
+                                                padding: '24px 8px',
+                                                borderRadius: '24px',
+                                                minHeight: '150px',
+                                                width: '100%',
+                                                border: '1px solid var(--border-subtle)'
+                                            }}>
+                                                <div className="room-number-display" style={{ fontSize: '3rem', fontWeight: '950', letterSpacing: '-2px', lineHeight: '1' }}>{room.roomNumber}</div>
+                                                <span className={`badge ${room.status === 'OCCUPIED' ? 'green' : 'red'}`} style={{ marginTop: '16px', borderRadius: '12px', fontSize: '0.7rem', width: 'fit-content', whiteSpace: 'nowrap' }}>{room.status}</span>
+                                                <input type="hidden" name="roomIds[]" value={room.id} />
                                             </div>
-                                            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                                <div style={{ minWidth: '90px', flex: '0 0 auto' }}>
-                                                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '700', marginBottom: '4px', display: 'block' }}>PREVIOUS</label>
-                                                    <input
-                                                        key={`prev_elec_${room.id}_${currentMonth}`}
-                                                        type="number"
-                                                        name={`prevElec_${room.id}`}
-                                                        value={drafts[`prevElec_${room.id}`] !== undefined ? drafts[`prevElec_${room.id}`] : (lastReading?.elecMeter || 0)}
-                                                        onChange={handleInputChange}
-                                                        step="0.1"
-                                                        style={{ width: '100%', padding: '10px', minHeight: '44px', borderRadius: '8px', border: '1px dashed var(--border-subtle)', background: 'transparent', textAlign: 'center' }}
-                                                    />
-                                                </div>
-                                                <div style={{ flex: 1, minWidth: '140px' }}>
-                                                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '700', marginBottom: '4px', display: 'block' }}>CURRENT</label>
-                                                    <input
-                                                        type="number"
-                                                        name={`elec_${room.id}`}
-                                                        value={drafts[`elec_${room.id}`] || ''}
-                                                        onChange={handleInputChange}
-                                                        onKeyDown={(e) => handleKeyDown(e, room.id, 'elec')}
-                                                        step="0.1"
-                                                        placeholder="0.0"
-                                                        style={{
-                                                            width: '100%',
-                                                            fontSize: '1.5rem',
-                                                            fontWeight: '800',
-                                                            padding: '12px 20px',
-                                                            minHeight: '56px',
-                                                            borderRadius: '12px',
-                                                            background: 'var(--bg-app)'
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            {currElec > 0 && !isElecError && (
-                                                <div style={{ marginTop: '16px', textAlign: 'right', fontWeight: '800', fontSize: '1.1rem' }}>
-                                                    ฿{(elecUsage * apartment.defaultElecPrice).toLocaleString()}
-                                                </div>
-                                            )}
-                                            {isElecError && (
-                                                <div style={{ marginTop: '12px', color: 'var(--danger)', fontSize: '0.8rem', fontWeight: '600' }}>⚠️ Reading too low</div>
-                                            )}
-                                        </div>
 
-                                        {/* Water Card */}
-                                        <div style={{
-                                            background: 'var(--bg-panel)',
-                                            padding: '24px',
-                                            borderRadius: '20px',
-                                            border: isWaterError ? '1px solid var(--danger)' : '1px solid transparent'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-                                                <span style={{ fontWeight: '700', color: isWaterError ? 'var(--danger)' : 'var(--text-dark)' }}>💧 WATER</span>
-                                                {currWater > 0 && !isWaterError && (
-                                                    <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: '700' }}>+ {waterUsage.toFixed(0)} units</span>
-                                                )}
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                                <div style={{ minWidth: '90px', flex: '0 0 auto' }}>
-                                                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '700', marginBottom: '4px', display: 'block' }}>PREVIOUS</label>
-                                                    <input
-                                                        key={`prev_water_${room.id}_${currentMonth}`}
-                                                        type="number"
-                                                        name={`prevWater_${room.id}`}
-                                                        value={drafts[`prevWater_${room.id}`] !== undefined ? drafts[`prevWater_${room.id}`] : (lastReading?.waterMeter || 0)}
-                                                        onChange={handleInputChange}
-                                                        step="0.1"
-                                                        style={{ width: '100%', padding: '10px', minHeight: '44px', borderRadius: '8px', border: '1px dashed var(--border-subtle)', background: 'transparent', textAlign: 'center' }}
-                                                    />
+                                            <div style={{ display: 'grid', gap: '20px' }}>
+                                                {/* Electricity Group */}
+                                                <div style={{ background: 'rgba(251, 191, 36, 0.06)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(251, 191, 36, 0.1)' }}>
+                                                    <div className="flex-between" style={{ marginBottom: '12px' }}>
+                                                        <label style={{ fontSize: '0.75rem', fontWeight: '950', color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '1px' }}>⚡ Energy (kWh)</label>
+                                                        {elecDiff > 0 && <span className="badge yellow" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>+{elecDiff.toFixed(1)}</span>}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
+                                                        <div style={{ flex: 1.5 }}>
+                                                            <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: '900', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>Current Reading</label>
+                                                            <input
+                                                                type="number"
+                                                                name={`elec_${room.id}`}
+                                                                value={drafts[`elec_${room.id}`] || ''}
+                                                                onChange={handleInputChange}
+                                                                onKeyDown={(e) => handleKeyDown(e, room.id, 'elec')}
+                                                                placeholder="Current"
+                                                                className="input-global"
+                                                                style={{ fontWeight: '950', fontSize: '1.5rem', height: '64px', borderRadius: '16px', background: 'var(--bg-panel)' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ flex: 1 }}>
+                                                            <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: '900', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>Previous</label>
+                                                            <input
+                                                                type="number"
+                                                                name={`prevElec_${room.id}`}
+                                                                value={drafts[`prevElec_${room.id}`] || ''}
+                                                                onChange={handleInputChange}
+                                                                placeholder="Prev"
+                                                                className="input-global"
+                                                                style={{ width: '100%', height: '64px', opacity: 0.7, fontSize: '1.1rem', fontWeight: '800', borderRadius: '16px', textAlign: 'center', background: 'rgba(255,255,255,0.03)' }}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div style={{ flex: 1, minWidth: '140px' }}>
-                                                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: '700', marginBottom: '4px', display: 'block' }}>CURRENT</label>
-                                                    <input
-                                                        type="number"
-                                                        name={`water_${room.id}`}
-                                                        value={drafts[`water_${room.id}`] || ''}
-                                                        onChange={handleInputChange}
-                                                        onKeyDown={(e) => handleKeyDown(e, room.id, 'water')}
-                                                        step="0.1"
-                                                        placeholder="0.0"
-                                                        style={{
-                                                            width: '100%',
-                                                            fontSize: '1.5rem',
-                                                            fontWeight: '800',
-                                                            padding: '12px 20px',
-                                                            minHeight: '56px',
-                                                            borderRadius: '12px',
-                                                            background: 'var(--bg-app)'
-                                                        }}
-                                                    />
+
+                                                {/* Water Group */}
+                                                <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                                                    <div className="flex-between" style={{ marginBottom: '12px' }}>
+                                                        <label style={{ fontSize: '0.75rem', fontWeight: '950', color: 'var(--blue)', textTransform: 'uppercase', letterSpacing: '1px' }}>💧 Water (Units)</label>
+                                                        {waterUsage > 0 && <span className="badge blue" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>+{waterUsage.toFixed(0)}</span>}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
+                                                        <div style={{ flex: 1.5 }}>
+                                                            <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: '900', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>Current Reading</label>
+                                                            <input
+                                                                type="number"
+                                                                name={`water_${room.id}`}
+                                                                value={drafts[`water_${room.id}`] || ''}
+                                                                onChange={handleInputChange}
+                                                                onKeyDown={(e) => handleKeyDown(e, room.id, 'water')}
+                                                                placeholder="Current"
+                                                                className="input-global"
+                                                                style={{ fontWeight: '950', fontSize: '1.5rem', height: '64px', borderRadius: '16px', background: 'var(--bg-panel)' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ flex: 1 }}>
+                                                            <label style={{ display: 'block', fontSize: '0.65rem', fontWeight: '900', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>Previous</label>
+                                                            <input
+                                                                type="number"
+                                                                name={`prevWater_${room.id}`}
+                                                                value={drafts[`prevWater_${room.id}`] || ''}
+                                                                onChange={handleInputChange}
+                                                                placeholder="Prev"
+                                                                className="input-global"
+                                                                style={{ width: '100%', height: '64px', opacity: 0.7, fontSize: '1.1rem', fontWeight: '800', borderRadius: '16px', textAlign: 'center', background: 'rgba(255,255,255,0.03)' }}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            {currWater > 0 && !isWaterError && (
-                                                <div style={{ marginTop: '16px', textAlign: 'right', fontWeight: '800', fontSize: '1.1rem' }}>
-                                                    ฿{(waterUsage * apartment.defaultWaterPrice).toLocaleString()}
-                                                </div>
-                                            )}
-                                            {isWaterError && (
-                                                <div style={{ marginTop: '12px', color: 'var(--danger)', fontSize: '0.8rem', fontWeight: '600' }}>⚠️ Reading too low</div>
-                                            )}
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="glass-card animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ background: 'rgba(var(--primary-rgb), 0.03)', borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <th style={{ padding: '24px 40px', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '950', letterSpacing: '2px' }}>Unit</th>
+                                            <th style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '950' }}>Prev Elec</th>
+                                            <th style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '950' }}>Curr Elec</th>
+                                            <th style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '950' }}>Prev Water</th>
+                                            <th style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '950' }}>Curr Water</th>
+                                            <th style={{ padding: '24px 40px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '950', letterSpacing: '2px' }}>Total Ledger</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedRooms.map(room => {
+                                            const pE = parseFloat(drafts[`prevElec_${room.id}`] || '0');
+                                            const cE = parseFloat(drafts[`elec_${room.id}`] || '0');
+                                            const eDiff = Math.max(0, cE - pE);
+                                            const pW = parseFloat(drafts[`prevWater_${room.id}`] || '0');
+                                            const cW = parseFloat(drafts[`water_${room.id}`] || '0');
+                                            const wDiff = Math.max(0, cW - pW);
+                                            const total = room.baseRent + (eDiff * apartment.defaultElecPrice) + (wDiff * apartment.defaultWaterPrice);
 
-                    <div style={{ marginTop: '60px', display: 'flex', justifyContent: 'center' }}>
-                        <button type="submit" className="btn btn-primary" style={{ padding: '20px 80px', minHeight: '64px', fontSize: '1.25rem', borderRadius: '24px', boxShadow: '0 20px 40px -10px rgba(var(--primary-rgb), 0.3)' }}>
-                            ✅ Finalize & Generate Invoices
+                                            return (
+                                                <tr key={room.id} style={{ borderBottom: '1px solid var(--border-subtle)' }} className="table-row-hover">
+                                                    <td style={{ padding: '20px 40px' }}>
+                                                        <div style={{ fontWeight: '950', fontSize: '1.6rem', color: 'var(--text-dark)' }}>{room.roomNumber}</div>
+                                                    </td>
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        <input type="number" name={`prevElec_${room.id}`} value={drafts[`prevElec_${room.id}`] || ''} onChange={handleInputChange} className="input-global" style={{ width: '120px', opacity: 0.5, fontSize: '0.9rem', textAlign: 'center', borderRadius: '12px' }} />
+                                                    </td>
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        <input type="number" name={`elec_${room.id}`} value={drafts[`elec_${room.id}`] || ''} onChange={handleInputChange} className="input-global" style={{ width: '120px', fontWeight: '950', textAlign: 'center', color: 'var(--warning)', borderColor: 'rgba(251, 191, 36, 0.3)', fontSize: '1.2rem', borderRadius: '12px' }} />
+                                                    </td>
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        <input type="number" name={`prevWater_${room.id}`} value={drafts[`prevWater_${room.id}`] || ''} onChange={handleInputChange} className="input-global" style={{ width: '120px', opacity: 0.5, fontSize: '0.9rem', textAlign: 'center', borderRadius: '12px' }} />
+                                                    </td>
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        <input type="number" name={`water_${room.id}`} value={drafts[`water_${room.id}`] || ''} onChange={handleInputChange} className="input-global" style={{ width: '120px', fontWeight: '950', textAlign: 'center', color: 'var(--blue)', borderColor: 'rgba(56, 189, 248, 0.3)', fontSize: '1.2rem', borderRadius: '12px' }} />
+                                                    </td>
+                                                    <td style={{ padding: '20px 40px', textAlign: 'right', fontWeight: '950', fontSize: '1.4rem' }}>
+                                                        ฿{total.toLocaleString()}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{ marginTop: '100px', display: 'flex', justifyContent: 'center', paddingBottom: '120px' }}>
+                        <button type="submit" className="btn btn-primary hover-effect" style={{ padding: '24px 120px', minHeight: '100px', fontSize: '1.75rem', borderRadius: '40px', boxShadow: '0 40px 80px -15px rgba(var(--primary-rgb), 0.6)', fontWeight: '950' }}>
+                            ⚡ Authorize & Generate Ledger
                         </button>
                     </div>
                 </form>

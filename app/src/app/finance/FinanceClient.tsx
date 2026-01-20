@@ -106,23 +106,23 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
         }));
 
     return (
-        <main className="animate-fade-in" style={{ paddingBottom: '4rem' }}>
+        <main className="container animate-fade-in" style={{ paddingBottom: '8rem' }}>
             <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '24px' }}>
                 <BackButton label={t('back_to_dashboard')} href="/" />
             </div>
 
-            <header style={{ padding: '32px 0 40px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                <div className="flex-between flex-wrap gap-20">
+            <header style={{ padding: '40px 0 60px 0' }}>
+                <div className="flex-between flex-wrap gap-24">
                     <div>
-                        <h1 className="text-gradient" style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', lineHeight: '1.2' }}>{t('finance')} Analysis</h1>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Detailed financial insights & reporting</p>
+                        <h1 className="text-gradient" style={{ marginBottom: '12px' }}>{t('finance')} Analytics</h1>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem', fontWeight: '500' }}>Deep dive into your property's financial performance and trends.</p>
                     </div>
-                    <div className="no-print" style={{ width: '100%', maxWidth: '250px' }}>
+                    <div className="no-print" style={{ width: '100%', maxWidth: '300px' }}>
                         <select
                             value={selectedApartmentId}
                             onChange={(e) => setSelectedApartmentId(e.target.value)}
-                            className="btn"
-                            style={{ width: '100%', background: 'var(--bg-panel)', border: '1px solid var(--primary)', borderRadius: '16px' }}
+                            className="btn btn-secondary"
+                            style={{ width: '100%', background: 'var(--bg-panel)', textAlign: 'left', borderRadius: '16px' }}
                         >
                             {apartments.map(a => (
                                 <option key={a.id} value={a.id}>{a.name}</option>
@@ -132,22 +132,44 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
                 </div>
             </header>
 
-            {/* Navigation Tabs */}
-            <nav className="no-print glass-card" style={{ marginTop: '32px', padding: '8px', display: 'flex', gap: '8px', overflowX: 'auto', borderRadius: '20px', scrollbarWidth: 'none' }}>
+            {/* Premium Navigation Tabs */}
+            <nav className="no-print glass-card" style={{
+                marginTop: '12px',
+                padding: '6px',
+                display: 'flex',
+                gap: '8px',
+                overflowX: 'auto',
+                borderRadius: '20px',
+                scrollbarWidth: 'none',
+                background: 'rgba(var(--primary-rgb), 0.03)',
+                border: '1px solid var(--glass-border)'
+            }}>
                 {[
-                    { id: 'overview', label: 'วิเคราะห์รายรับ/กำไร', icon: '📊' },
-                    { id: 'comparison', label: 'เปรียบเทียบระหว่างเดือน', icon: '⚖️' },
-                    { id: 'utilities', label: 'วิเคราะห์มิเตอร์ (น้ำ/ไฟ)', icon: '⚡' },
-                    { id: 'operations', label: 'จอง/เข้า/ออก', icon: '🔑' },
-                    { id: 'maintenance', label: 'งานซ่อมบำรุง/รายจ่าย', icon: '🛠️' }
+                    { id: 'overview', label: 'Summary', icon: '📊' },
+                    { id: 'comparison', label: 'Revenue Breakdown', icon: '⚖️' },
+                    { id: 'utilities', label: 'Utility Trends', icon: '⚡' },
+                    { id: 'operations', label: 'Occupancy Flow', icon: '🔑' },
+                    { id: 'maintenance', label: 'Maintenance Hub', icon: '🛠️' }
                 ].map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`btn ${activeTab === tab.id ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ flex: '1', minWidth: '160px', borderRadius: '14px', whiteSpace: 'nowrap', padding: '12px 20px' }}
+                        className={`btn ${activeTab === tab.id ? 'btn-primary' : ''}`}
+                        style={{
+                            flex: '1',
+                            minWidth: '180px',
+                            borderRadius: '14px',
+                            whiteSpace: 'nowrap',
+                            padding: '12px 24px',
+                            minHeight: '48px',
+                            fontSize: '0.9rem',
+                            background: activeTab === tab.id ? '' : 'transparent',
+                            color: activeTab === tab.id ? 'white' : 'var(--text-muted)',
+                            border: 'none',
+                            boxShadow: activeTab === tab.id ? 'var(--shadow-glow)' : 'none'
+                        }}
                     >
-                        <span style={{ marginRight: '8px' }}>{tab.icon}</span> {tab.label}
+                        <span style={{ marginRight: '8px', fontSize: '1.1rem' }}>{tab.icon}</span> {tab.label}
                     </button>
                 ))}
             </nav>
@@ -158,56 +180,95 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
                 {/* 1. Profit/Loss Overview */}
                 {activeTab === 'overview' && (
                     <div className="animate-fade-in">
-                        <section className="grid-dashboard" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-                            <div className="glass-card hover-effect">
-                                <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Income (Invoiced)</h3>
-                                <div style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: '800', marginTop: '12px', color: 'var(--text-dark)' }}>
-                                    ฿{projectedRevenue.toLocaleString()}
+                        {/* Summary Cards */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px', marginBottom: '48px' }}>
+                            <div className="glass-card hover-effect" style={{ padding: '32px', borderLeft: '5px solid var(--success)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>Current Month Revenue</p>
+                                        <h2 style={{ fontSize: '2.5rem', fontWeight: '950', marginTop: '8px' }}>฿{projectedRevenue.toLocaleString()}</h2>
+                                        <p style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: '700', marginTop: '4px' }}>Invoiced & Projected</p>
+                                    </div>
+                                    <div style={{ fontSize: '2.5rem', opacity: 0.5 }}>💰</div>
                                 </div>
                             </div>
-
-                            <div className="glass-card hover-effect" style={{ borderLeft: '4px solid var(--danger)' }}>
-                                <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Expenses (Actual)</h3>
-                                <div style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: '800', marginTop: '12px', color: 'var(--danger)' }}>
-                                    ฿{totalOutflow.toLocaleString()}
-                                </div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                                    Ops: ฿{monthlyExpenses.toLocaleString()} | Fix: ฿{monthlyMaintenance.toLocaleString()}
-                                </div>
-                            </div>
-
-                            <div className="glass-card hover-effect" style={{ borderLeft: '4px solid var(--success)' }}>
-                                <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Net Profit (Net)</h3>
-                                <div style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: '800', marginTop: '12px', color: 'var(--success)' }}>
-                                    ฿{netProfit.toLocaleString()}
-                                </div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                                    Margin: {projectedRevenue > 0 ? ((netProfit / projectedRevenue) * 100).toFixed(1) : 0}%
+                            <div className="glass-card hover-effect" style={{ padding: '32px', borderLeft: '5px solid var(--danger)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>Monthly Outflow</p>
+                                        <h2 style={{ fontSize: '2.5rem', fontWeight: '950', marginTop: '8px', color: 'var(--danger)' }}>฿{totalOutflow.toLocaleString()}</h2>
+                                        <p style={{ color: 'var(--danger)', fontSize: '0.85rem', fontWeight: '700', marginTop: '4px' }}>Mortgage, Ops & Fix</p>
+                                    </div>
+                                    <div style={{ fontSize: '2.5rem', opacity: 0.5 }}>📉</div>
                                 </div>
                             </div>
-                        </section>
+                            <div className="glass-card hover-effect" style={{ padding: '32px', borderLeft: '5px solid var(--primary)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>Estimated Net Profit</p>
+                                        <h2 style={{ fontSize: '2.5rem', fontWeight: '950', marginTop: '8px', color: 'var(--primary)' }}>฿{netProfit.toLocaleString()}</h2>
+                                        <p style={{ color: 'var(--primary)', fontSize: '0.85rem', fontWeight: '700', marginTop: '4px' }}>Margin: {projectedRevenue > 0 ? ((netProfit / projectedRevenue) * 100).toFixed(1) : 0}%</p>
+                                    </div>
+                                    <div style={{ fontSize: '2.5rem', opacity: 0.5 }}>💎</div>
+                                </div>
+                            </div>
+                        </div>
 
-                        <div className="glass-card" style={{ height: 'auto', minHeight: '400px', padding: '24px', marginTop: '32px' }}>
-                            <h3 style={{ marginBottom: '24px', fontSize: '1.2rem' }}>📈 Financial Evolution (Revenue vs Expenses vs Profit)</h3>
-                            <div style={{ width: '100%', height: '320px' }}>
+                        {/* Revenue Trends Chart */}
+                        <div className="glass-card" style={{ padding: '48px', position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.5rem', fontWeight: '900' }}>Property Financial Trajectory</h3>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Revenue vs Expenses vs Profit Evolution</p>
+                                </div>
+                                <div className="badge blue" style={{ padding: '8px 16px' }}>Real-time Data</div>
+                            </div>
+                            <div style={{ height: '450px', width: '100%', marginTop: '20px' }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={trendData}>
                                         <defs>
                                             <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="var(--success)" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
+                                                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.4} />
+                                                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                                        <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} />
-                                        <YAxis stroke="var(--text-muted)" fontSize={12} tickFormatter={(value) => `฿${value >= 1000 ? value / 1000 + 'k' : value}`} />
-                                        <Tooltip
-                                            contentStyle={{ background: 'var(--bg-panel)', border: '1px solid var(--primary)', borderRadius: '12px' }}
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                        <XAxis
+                                            dataKey="name"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: 'var(--text-muted)', fontSize: 12, fontWeight: 700 }}
+                                            dy={10}
                                         />
-                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                        <YAxis
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: 'var(--text-muted)', fontSize: 12, fontWeight: 700 }}
+                                            tickFormatter={(val) => `฿${(val / 1000).toFixed(0)}k`}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{
+                                                background: 'var(--bg-panel)',
+                                                border: '1px solid var(--border-subtle)',
+                                                borderRadius: '16px',
+                                                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                                                padding: '16px'
+                                            }}
+                                            itemStyle={{ fontWeight: 800 }}
+                                        />
+                                        <Legend wrapperStyle={{ paddingTop: '32px' }} />
                                         <Area type="monotone" dataKey="revenue" stroke="var(--primary)" fillOpacity={0} name="Revenue" strokeWidth={2} />
                                         <Area type="monotone" dataKey="expenses" stroke="var(--danger)" fillOpacity={0} name="Expenses" strokeWidth={2} />
-                                        <Area type="monotone" dataKey="profit" stroke="var(--success)" fillOpacity={1} fill="url(#colorProfit)" name="Profit" strokeWidth={3} />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="profit"
+                                            stroke="var(--success)"
+                                            strokeWidth={4}
+                                            fillOpacity={1}
+                                            fill="url(#colorProfit)"
+                                            name="Net Profit"
+                                            dot={{ r: 6, fill: 'var(--success)', strokeWidth: 2, stroke: '#fff' }}
+                                        />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -217,33 +278,41 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
 
                 {/* 2. Revenue Comparison */}
                 {activeTab === 'comparison' && (
-                    <div className="animate-fade-in card glass-card" style={{ padding: '24px' }}>
-                        <h3 style={{ marginBottom: '24px', fontSize: '1.2rem' }}>📊 Revenue Source Segmentation</h3>
-                        <div style={{ height: 'auto', minHeight: '350px', width: '100%' }}>
-                            <ResponsiveContainer width="100%" height={320}>
-                                <AreaChart data={revenueBreakdownData}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                                    <XAxis dataKey="name" fontSize={12} />
-                                    <YAxis fontSize={12} />
-                                    <Tooltip />
-                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                    <Area type="monotone" dataKey="rent" stackId="1" stroke="#818cf8" fill="#818cf8" name="Room Rent" />
-                                    <Area type="monotone" dataKey="elec" stackId="1" stroke="#fbbf24" fill="#fbbf24" name="Electricity" />
-                                    <Area type="monotone" dataKey="water" stackId="1" stroke="#38bdf8" fill="#38bdf8" name="Water" />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                    <div className="animate-fade-in">
+                        <div className="glass-card" style={{ padding: '48px' }}>
+                            <div style={{ marginBottom: '40px' }}>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: '900' }}>📊 Revenue Source Segmentation</h3>
+                                <p style={{ color: 'var(--text-muted)' }}>Historical breakdown of rent and utilities</p>
+                            </div>
+                            <div style={{ height: '400px', width: '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={revenueBreakdownData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                                        <Tooltip contentStyle={{ background: 'var(--bg-panel)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }} />
+                                        <Legend wrapperStyle={{ paddingTop: '24px' }} />
+                                        <Area type="monotone" dataKey="rent" stackId="1" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.4} name="Room Rent" />
+                                        <Area type="monotone" dataKey="elec" stackId="1" stroke="var(--warning)" fill="var(--warning)" fillOpacity={0.4} name="Electricity" />
+                                        <Area type="monotone" dataKey="water" stackId="1" stroke="var(--blue)" fill="var(--blue)" fillOpacity={0.4} name="Water" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                        <div style={{ marginTop: '40px' }}>
-                            <h4 style={{ marginBottom: '20px' }}>Monthly Breakdown Table</h4>
-                            <div style={{ overflowX: 'auto', margin: '0 -24px', padding: '0 24px' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+
+                        <div className="glass-card" style={{ marginTop: '48px', padding: '0', overflow: 'hidden' }}>
+                            <div style={{ padding: '32px' }}>
+                                <h4 style={{ fontSize: '1.25rem', fontWeight: '900' }}>Historical Ledgers</h4>
+                            </div>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                     <thead>
-                                        <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--border-subtle)' }}>
-                                            <th style={{ padding: '12px' }}>Month</th>
-                                            <th style={{ padding: '12px' }}>Rent</th>
-                                            <th style={{ padding: '12px' }}>Utilities</th>
-                                            <th style={{ padding: '12px' }}>Total</th>
-                                            <th style={{ padding: '12px' }}>Growth</th>
+                                        <tr style={{ background: 'var(--bg-app)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Month</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Rent</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Utilities</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Total</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', textAlign: 'right' }}>Growth</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -251,13 +320,13 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
                                             const prev = arr[i + 1];
                                             const growth = prev ? ((d.revenue - prev.revenue) / prev.revenue * 100).toFixed(1) : '-';
                                             return (
-                                                <tr key={d.name} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                                    <td style={{ padding: '12px' }}>{d.name}</td>
-                                                    <td style={{ padding: '12px' }}>฿{d.rent.toLocaleString()}</td>
-                                                    <td style={{ padding: '12px' }}>฿{(d.elec + d.water).toLocaleString()}</td>
-                                                    <td style={{ padding: '12px', fontWeight: '700' }}>฿{d.revenue.toLocaleString()}</td>
-                                                    <td style={{ padding: '12px', color: parseFloat(growth) > 0 ? 'var(--success)' : 'var(--danger)' }}>
-                                                        {growth !== '-' ? `${growth}%` : '-'}
+                                                <tr key={d.name} className="table-row-hover" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                    <td style={{ padding: '20px 32px', fontWeight: '800' }}>{d.name}</td>
+                                                    <td style={{ padding: '20px 32px' }}>฿{d.rent.toLocaleString()}</td>
+                                                    <td style={{ padding: '20px 32px' }}>฿{(d.elec + d.water).toLocaleString()}</td>
+                                                    <td style={{ padding: '20px 32px', fontWeight: '900', color: 'var(--primary)' }}>฿{d.revenue.toLocaleString()}</td>
+                                                    <td style={{ padding: '20px 32px', textAlign: 'right', fontWeight: '800', color: parseFloat(growth) > 0 ? 'var(--success)' : 'var(--danger)' }}>
+                                                        {growth !== '-' ? `${parseFloat(growth) > 0 ? '+' : ''}${growth}%` : '-'}
                                                     </td>
                                                 </tr>
                                             );
@@ -271,33 +340,39 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
 
                 {/* 3. Utility Analysis */}
                 {activeTab === 'utilities' && (
-                    <div className="animate-fade-in card glass-card" style={{ padding: '24px' }}>
-                        <h3 style={{ marginBottom: '24px', fontSize: '1.2rem' }}>⚡ Meter Consumption Analysis (Combined)</h3>
-                        <div style={{ height: 'auto', minHeight: '350px', width: '100%' }}>
-                            <ResponsiveContainer width="100%" height={320}>
-                                <AreaChart data={utilityUsageData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" fontSize={12} />
-                                    <YAxis yAxisId="left" orientation="left" stroke="#fbbf24" fontSize={10} label={{ value: 'Elec (Unit)', angle: -90, position: 'insideLeft', style: { fill: '#fbbf24' } }} />
-                                    <YAxis yAxisId="right" orientation="right" stroke="#38bdf8" fontSize={10} label={{ value: 'Water (Unit)', angle: 90, position: 'insideRight', style: { fill: '#38bdf8' } }} />
-                                    <Tooltip />
-                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                    <Area yAxisId="left" type="monotone" dataKey="elecUsage" stroke="#fbbf24" fill="#fbbf24" fillOpacity={0.1} name="Electricity Usage" />
-                                    <Area yAxisId="right" type="monotone" dataKey="waterUsage" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.1} name="Water Usage" />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                    <div className="animate-fade-in">
+                        <div className="glass-card" style={{ padding: '48px' }}>
+                            <div style={{ marginBottom: '40px' }}>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: '900' }}>⚡ Meter Consumption Analysis</h3>
+                                <p style={{ color: 'var(--text-muted)' }}>Resource usage patterns over time</p>
+                            </div>
+                            <div style={{ height: '400px', width: '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={utilityUsageData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                                        <YAxis yAxisId="left" hide />
+                                        <YAxis yAxisId="right" hide />
+                                        <Tooltip contentStyle={{ background: 'var(--bg-panel)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }} />
+                                        <Legend wrapperStyle={{ paddingTop: '24px' }} />
+                                        <Area yAxisId="left" type="monotone" dataKey="elecUsage" stroke="var(--warning)" fill="var(--warning)" fillOpacity={0.2} name="Electricity Usage (Units)" strokeWidth={3} />
+                                        <Area yAxisId="right" type="monotone" dataKey="waterUsage" stroke="var(--blue)" fill="var(--blue)" fillOpacity={0.2} name="Water Usage (Units)" strokeWidth={3} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                        <div className="grid-dashboard" style={{ marginTop: '48px', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-                            <div className="glass-card">
-                                <h4 style={{ fontSize: '0.9rem' }}>Avg. Electricity Usage/Month</h4>
-                                <div style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: '800', marginTop: '10px' }}>
-                                    {trendData.length > 0 ? (trendData.reduce((acc: number, d: any) => acc + d.elecUsage, 0) / trendData.length).toFixed(1) : 0} <span style={{ fontSize: '1rem', fontWeight: '400' }}>Units</span>
+
+                        <div className="grid-dashboard" style={{ marginTop: '48px', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+                            <div className="glass-card hover-effect" style={{ padding: '32px' }}>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase' }}>Avg. Electricity Consumption</p>
+                                <div style={{ fontSize: '2.5rem', fontWeight: '950', marginTop: '12px', color: 'var(--warning)' }}>
+                                    {trendData.length > 0 ? (trendData.reduce((acc: number, d: any) => acc + d.elecUsage, 0) / trendData.length).toFixed(1) : 0} <span style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.6 }}>UNITS</span>
                                 </div>
                             </div>
-                            <div className="glass-card">
-                                <h4 style={{ fontSize: '0.9rem' }}>Avg. Water Usage/Month</h4>
-                                <div style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: '800', marginTop: '10px' }}>
-                                    {trendData.length > 0 ? (trendData.reduce((acc: number, d: any) => acc + d.waterUsage, 0) / trendData.length).toFixed(1) : 0} <span style={{ fontSize: '1rem', fontWeight: '400' }}>Units</span>
+                            <div className="glass-card hover-effect" style={{ padding: '32px' }}>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase' }}>Avg. Water Consumption</p>
+                                <div style={{ fontSize: '2.5rem', fontWeight: '950', marginTop: '12px', color: 'var(--blue)' }}>
+                                    {trendData.length > 0 ? (trendData.reduce((acc: number, d: any) => acc + d.waterUsage, 0) / trendData.length).toFixed(1) : 0} <span style={{ fontSize: '1rem', fontWeight: '500', opacity: 0.6 }}>UNITS</span>
                                 </div>
                             </div>
                         </div>
@@ -307,56 +382,56 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
                 {/* 4. Operations (In/Out) */}
                 {activeTab === 'operations' && (
                     <div className="animate-fade-in">
-                        <div className="card glass-card" style={{ padding: '24px' }}>
-                            <h3 style={{ marginBottom: '24px', fontSize: '1.2rem' }}>🔑 Tenant Flow (Move-ins vs Move-outs)</h3>
-                            <div style={{ height: 'auto', minHeight: '350px', width: '100%' }}>
-                                <ResponsiveContainer width="100%" height={320}>
+                        <div className="glass-card" style={{ padding: '48px' }}>
+                            <div style={{ marginBottom: '40px' }}>
+                                <h3 style={{ fontSize: '1.5rem', fontWeight: '900' }}>🔑 Tenant Flow Dynamics</h3>
+                                <p style={{ color: 'var(--text-muted)' }}>Lifecycle of room occupancy and transitions</p>
+                            </div>
+                            <div style={{ height: '400px', width: '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={occupancyTrend}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="name" fontSize={12} />
-                                        <YAxis fontSize={12} />
-                                        <Tooltip />
-                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                        <Area type="stepBefore" dataKey="moveIn" stroke="var(--success)" fill="var(--success)" fillOpacity={0.1} name="Move Ins" />
-                                        <Area type="stepBefore" dataKey="moveOut" stroke="var(--danger)" fill="var(--danger)" fillOpacity={0.1} name="Move Outs" />
-                                        <Area type="stepBefore" dataKey="maintenance" stroke="var(--warning)" fill="var(--warning)" fillOpacity={0.1} name="To Maintenance" />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                                        <Tooltip contentStyle={{ background: 'var(--bg-panel)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }} />
+                                        <Legend wrapperStyle={{ paddingTop: '24px' }} />
+                                        <Area type="stepBefore" dataKey="moveIn" stroke="var(--success)" fill="var(--success)" fillOpacity={0.2} name="Move Ins" strokeWidth={3} />
+                                        <Area type="stepBefore" dataKey="moveOut" stroke="var(--danger)" fill="var(--danger)" fillOpacity={0.2} name="Move Outs" strokeWidth={3} />
+                                        <Area type="stepBefore" dataKey="maintenance" stroke="var(--warning)" fill="var(--warning)" fillOpacity={0.2} name="To Maintenance" strokeWidth={3} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
 
-                        <div className="card" style={{ marginTop: '32px', padding: '0', overflow: 'hidden' }}>
-                            <div style={{ padding: '24px' }}>
-                                <h3 style={{ fontSize: '1.2rem' }}>Recent Status History</h3>
+                        <div className="glass-card" style={{ marginTop: '48px', padding: '0', overflow: 'hidden' }}>
+                            <div style={{ padding: '32px' }}>
+                                <h4 style={{ fontSize: '1.25rem', fontWeight: '900' }}>Recent Status Conversions</h4>
                             </div>
                             <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                                    <thead style={{ background: 'var(--bg-panel)' }}>
-                                        <tr style={{ textAlign: 'left' }}>
-                                            <th style={{ padding: '16px' }}>Date</th>
-                                            <th style={{ padding: '16px' }}>Room</th>
-                                            <th style={{ padding: '16px' }}>Old Status</th>
-                                            <th style={{ padding: '16px' }}>New Status</th>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ background: 'var(--bg-app)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Timestamp</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Room</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Transition</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {selectedApartment?.roomStatusHistory?.map((h: any) => (
-                                            <tr key={h.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                                <td style={{ padding: '16px' }}>{new Date(h.changeDate).toLocaleString('th-TH')}</td>
-                                                <td style={{ padding: '16px', fontWeight: '700' }}>#{h.room?.roomNumber}</td>
-                                                <td style={{ padding: '16px' }}><span className="badge">{h.oldStatus}</span></td>
-                                                <td style={{ padding: '16px' }}>
-                                                    <span className={`badge ${h.newStatus === 'OCCUPIED' ? 'green' : h.newStatus === 'VACANT' ? 'red' : 'yellow'}`}>
-                                                        {h.newStatus}
-                                                    </span>
+                                            <tr key={h.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                <td style={{ padding: '20px 32px' }}>{new Date(h.changeDate).toLocaleString('th-TH')}</td>
+                                                <td style={{ padding: '20px 32px', fontWeight: '900' }}>#{h.room?.roomNumber}</td>
+                                                <td style={{ padding: '20px 32px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <span className="badge" style={{ opacity: 0.6 }}>{h.oldStatus}</span>
+                                                        <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                                        <span className={`badge ${h.newStatus === 'OCCUPIED' ? 'green' : h.newStatus === 'VACANT' ? 'red' : 'yellow'}`}>
+                                                            {h.newStatus}
+                                                        </span>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
-                                        {(!selectedApartment?.roomStatusHistory || selectedApartment.roomStatusHistory.length === 0) && (
-                                            <tr>
-                                                <td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No occupancy events tracked yet.</td>
-                                            </tr>
-                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -367,15 +442,15 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
                 {/* 5. Maintenance / Expenses */}
                 {activeTab === 'maintenance' && (
                     <div className="animate-fade-in">
-                        <div className="grid-dashboard" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-                            <div className="card" style={{ padding: '24px' }}>
-                                <h3 style={{ marginBottom: '24px', fontSize: '1.2rem' }}>🛠️ Log Maintenance</h3>
-                                <form action={async (formData) => { await createMaintenance(selectedApartmentId, formData) }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className="grid-dashboard" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
+                            <div className="glass-card" style={{ padding: '32px' }}>
+                                <h3 style={{ marginBottom: '32px', fontSize: '1.25rem', fontWeight: '900' }}>🛠️ Maintenance Dispatch</h3>
+                                <form action={async (formData) => { await createMaintenance(selectedApartmentId, formData) }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                     <input type="hidden" name="apartmentId" value={selectedApartmentId} />
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Room #</label>
-                                            <select name="roomId" className="btn" style={{ width: '100%', height: '48px', padding: '0 12px' }}>
+                                            <label className="label-global">Target Asset</label>
+                                            <select name="roomId" className="input-global" style={{ width: '100%' }}>
                                                 <option value="">General Property</option>
                                                 {selectedApartment?.rooms.map((r: any) => (
                                                     <option key={r.id} value={r.id}>Room {r.roomNumber}</option>
@@ -383,8 +458,8 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
                                             </select>
                                         </div>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Category</label>
-                                            <select name="category" className="btn" style={{ width: '100%', height: '48px', padding: '0 12px' }}>
+                                            <label className="label-global">Work Type</label>
+                                            <select name="category" className="input-global" style={{ width: '100%' }}>
                                                 <option value="REPAIR">Repair</option>
                                                 <option value="CLEANING">Cleaning</option>
                                                 <option value="UPGRADE">Upgrade</option>
@@ -392,47 +467,47 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
                                             </select>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Cost (฿)</label>
-                                            <input name="cost" type="number" required placeholder="0" />
+                                            <label className="label-global">Cost Allocation (฿)</label>
+                                            <input name="cost" type="number" required placeholder="0.00" className="input-global" />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                                            <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '48px', padding: '0' }}>Add Record</button>
+                                            <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '56px' }}>Dispatch Order</button>
                                         </div>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Description</label>
-                                        <input name="description" type="text" placeholder="Detail..." required />
+                                        <label className="label-global">Brief Specifications</label>
+                                        <input name="description" type="text" placeholder="Explain the maintenance required..." required className="input-global" />
                                     </div>
                                 </form>
                             </div>
 
-                            <div className="card" style={{ padding: '24px' }}>
-                                <h3 style={{ marginBottom: '24px', fontSize: '1.2rem' }}>📉 Add General Expense</h3>
-                                <form action={async (formData) => { await addExpense(formData); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className="glass-card" style={{ padding: '32px' }}>
+                                <h3 style={{ marginBottom: '32px', fontSize: '1.25rem', fontWeight: '900' }}>📉 OpEx Entry</h3>
+                                <form action={async (formData) => { await addExpense(formData); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                     <input type="hidden" name="apartmentId" value={selectedApartmentId} />
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Amount (฿)</label>
-                                            <input name="amount" type="number" required placeholder="0" />
+                                            <label className="label-global">Net Amount (฿)</label>
+                                            <input name="amount" type="number" required placeholder="0.00" className="input-global" />
                                         </div>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Category</label>
-                                            <select name="category" className="btn" style={{ width: '100%', height: '48px', padding: '0 12px' }}>
+                                            <label className="label-global">Ledger Head</label>
+                                            <select name="category" className="input-global" style={{ width: '100%' }}>
                                                 <option value="STAFF">{t('staff_salary')}</option>
                                                 <option value="TAX">{t('taxes')}</option>
                                                 <option value="OTHER">{t('other_costs')}</option>
                                             </select>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem' }}>Billing Month</label>
-                                            <input name="month" type="month" defaultValue={currentMonthKey} required />
+                                            <label className="label-global">Accounting Period</label>
+                                            <input name="month" type="month" defaultValue={currentMonthKey} required className="input-global" />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                                            <button type="submit" className="btn btn-secondary" style={{ width: '100%', height: '48px', padding: '0' }}>Record</button>
+                                            <button type="submit" className="btn btn-secondary" style={{ width: '100%', height: '56px' }}>Commit Entry</button>
                                         </div>
                                     </div>
                                 </form>
@@ -440,52 +515,49 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
                         </div>
 
                         {/* Recent Maintenance Table */}
-                        <div className="card" style={{ marginTop: '32px', padding: '0', overflow: 'hidden' }}>
-                            <div style={{ padding: '24px' }}>
-                                <h3 style={{ fontSize: '1.2rem' }}>Maintenance & Repairs Log</h3>
+                        <div className="glass-card" style={{ marginTop: '48px', padding: '0', overflow: 'hidden' }}>
+                            <div style={{ padding: '32px' }}>
+                                <h4 style={{ fontSize: '1.25rem', fontWeight: '900' }}>Maintenance & Repair Logs</h4>
                             </div>
                             <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                                    <thead style={{ background: 'var(--bg-panel)' }}>
-                                        <tr style={{ textAlign: 'left' }}>
-                                            <th style={{ padding: '16px' }}>Date</th>
-                                            <th style={{ padding: '16px' }}>Target</th>
-                                            <th style={{ padding: '16px' }}>Description</th>
-                                            <th style={{ padding: '16px' }}>Status</th>
-                                            <th style={{ padding: '16px', textAlign: 'right' }}>Cost</th>
-                                            <th style={{ padding: '16px', textAlign: 'center' }}>Action</th>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ background: 'var(--bg-app)', textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Date</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Target</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Description</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', textAlign: 'right' }}>Cost</th>
+                                            <th style={{ padding: '20px 32px', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', textAlign: 'center' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {selectedApartment?.maintenance?.map((m: any) => (
-                                            <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                                <td style={{ padding: '16px' }}>{new Date(m.recordDate).toLocaleDateString('th-TH')}</td>
-                                                <td style={{ padding: '16px' }}>{m.room ? `Room #${m.room.roomNumber}` : 'General Property'}</td>
-                                                <td style={{ padding: '16px' }}>{m.description}</td>
-                                                <td style={{ padding: '16px' }}>
+                                            <tr key={m.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                <td style={{ padding: '20px 32px' }}>{new Date(m.recordDate).toLocaleDateString('th-TH')}</td>
+                                                <td style={{ padding: '20px 32px', fontWeight: '800' }}>{m.room ? `Room #${m.room.roomNumber}` : 'General'}</td>
+                                                <td style={{ padding: '20px 32px', opacity: 0.8 }}>{m.description}</td>
+                                                <td style={{ padding: '20px 32px' }}>
                                                     <span className={`badge ${m.status === 'COMPLETED' ? 'green' : 'yellow'}`}>{m.status}</span>
                                                 </td>
-                                                <td style={{ padding: '16px', textAlign: 'right', fontWeight: '700' }}>฿{m.cost.toLocaleString()}</td>
-                                                <td style={{ padding: '16px', textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                                    {m.status !== 'COMPLETED' && (
-                                                        <form action={updateMaintenanceStatus}>
+                                                <td style={{ padding: '20px 32px', textAlign: 'right', fontWeight: '900' }}>฿{m.cost.toLocaleString()}</td>
+                                                <td style={{ padding: '20px 32px', textAlign: 'center' }}>
+                                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                                        {m.status !== 'COMPLETED' && (
+                                                            <form action={updateMaintenanceStatus}>
+                                                                <input type="hidden" name="id" value={m.id} />
+                                                                <input type="hidden" name="status" value="COMPLETED" />
+                                                                <button type="submit" className="btn btn-secondary icon-btn" style={{ padding: '8px', minWidth: '36px', minHeight: '36px', fontSize: '1rem' }}>✓</button>
+                                                            </form>
+                                                        )}
+                                                        <form action={deleteMaintenance}>
                                                             <input type="hidden" name="id" value={m.id} />
-                                                            <input type="hidden" name="status" value="COMPLETED" />
-                                                            <button type="submit" title="Mark as Completed" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>✅</button>
+                                                            <button type="submit" className="btn btn-secondary icon-btn" style={{ padding: '8px', minWidth: '36px', minHeight: '36px', fontSize: '1rem', color: 'var(--danger)' }}>🗑</button>
                                                         </form>
-                                                    )}
-                                                    <form action={deleteMaintenance}>
-                                                        <input type="hidden" name="id" value={m.id} />
-                                                        <button type="submit" title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
-                                                    </form>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
-                                        {(!selectedApartment?.maintenance || selectedApartment.maintenance.length === 0) && (
-                                            <tr>
-                                                <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No maintenance activity logged yet.</td>
-                                            </tr>
-                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -495,17 +567,27 @@ export default function FinanceClient({ apartments }: FinanceClientProps) {
 
             </div>
 
-            {/* Bank/Mortgage is now at the footer across all tabs */}
-            <section className="card no-print" style={{ marginTop: '64px', borderTop: '4px solid var(--primary)', padding: '24px' }}>
-                <h3 style={{ marginBottom: '24px', fontSize: '1.2rem' }}>💳 Base Financial Liabilities (Mortgage)</h3>
-                <form action={async (formData) => { await updateMortgage(formData); }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', alignItems: 'flex-end', gap: '20px' }}>
+            {/* Premium Mortgage Controller */}
+            <section className="glass-card no-print hover-effect" style={{ marginTop: '80px', borderTop: '4px solid var(--primary)', padding: '48px', background: 'linear-gradient(135deg, var(--bg-panel), rgba(var(--primary-rgb), 0.05))' }}>
+                <div style={{ marginBottom: '32px' }}>
+                    <h3 style={{ fontSize: '1.5rem', fontWeight: '900' }}>💳 Capital Liabilities (Mortgage)</h3>
+                    <p style={{ color: 'var(--text-muted)' }}>Manage your base financial obligations for {selectedApartment?.name}</p>
+                </div>
+                <form action={async (formData) => { await updateMortgage(formData); }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'flex-end', gap: '32px' }}>
                     <input type="hidden" name="apartmentId" value={selectedApartmentId} />
                     <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('monthly_repayment')} (฿)</label>
-                        <input name="monthlyPayment" type="number" defaultValue={selectedApartment?.mortgage?.monthlyPayment || 0} required />
+                        <label className="label-global">{t('monthly_repayment')} (฿)</label>
+                        <input
+                            name="monthlyPayment"
+                            type="number"
+                            defaultValue={selectedApartment?.mortgage?.monthlyPayment || 0}
+                            required
+                            className="input-global"
+                            style={{ fontSize: '1.5rem', fontWeight: '900' }}
+                        />
                     </div>
                     <div>
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '56px' }}>Update Bank Settings</button>
+                        <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '64px', fontSize: '1.1rem' }}>Update Financial Settings</button>
                     </div>
                 </form>
             </section>
